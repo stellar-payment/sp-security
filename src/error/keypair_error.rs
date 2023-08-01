@@ -11,7 +11,7 @@ pub enum KeypairError {
     KeypairNotFound,
     #[error("keypair error: {0}")]
     KeypairYabai(String),
-    #[error("failed to create keypair {0}")]
+    #[error("failed to create keypair: {0}")]
     KeypairCreationError(String),
 }
 

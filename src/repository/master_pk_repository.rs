@@ -19,7 +19,7 @@ pub trait MasterPKRepositoryTrait {
 
    async fn find_keypair_by_id(&self, id: i32) -> Result<MasterKeyPair, DBError>;
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError>;
-   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<MasterKeyPair, DBError>;
+   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<u64, DBError>;
    async fn update_keypair(&self, keypair: MasterKeyPair) -> Option<DBError>;
    async fn delete_keypair(&self, id: i32) -> Option<DBError>;
 }
@@ -62,22 +62,22 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       }
    }
 
-   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<MasterKeyPair, DBError> {
+   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<u64, DBError> {
       let current_time = Utc::now();
 
-      let res = sqlx::query_as::<_, MasterKeyPair>(
-         "insert into master_keypair columns(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?) 
+      let res = sqlx::query(
+         "insert into master_keypair(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?) 
          returning id, public_key, private_key, keypair_hash, created_at, updated_at")
       .bind(keypair.public_key)
          .bind(keypair.private_key) 
          .bind(keypair.keypair_hash) 
          .bind(current_time) 
          .bind(current_time)
-      .fetch_one(self.db.get_pool())
+      .execute(self.db.get_pool())
       .await;
    
       match res {
-         Ok(v) => Ok(v),
+         Ok(v) => Ok( v.last_insert_id()),
          Err(e) => Err(DBError::Yabaii(e.to_string()))
       }
    }
