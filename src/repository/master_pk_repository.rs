@@ -4,7 +4,6 @@ use crate::error::db_error::DBError;
 
 use async_trait::async_trait;
 use chrono::Utc;
-use sqlx::Error;
 use std::sync::Arc;
 
 
@@ -17,11 +16,12 @@ pub struct MasterPKRepository {
 pub trait MasterPKRepositoryTrait {
    fn new(conn: &Arc<Database>) -> Self;
 
-   async fn find_keypair_by_id(&self, id: i32) -> Result<MasterKeyPair, DBError>;
+   async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError>;
+   async fn find_keypair_by_id(&self, id: u64) -> Result<MasterKeyPair, DBError>;
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError>;
    async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<u64, DBError>;
    async fn update_keypair(&self, keypair: MasterKeyPair) -> Option<DBError>;
-   async fn delete_keypair(&self, id: i32) -> Option<DBError>;
+   async fn delete_keypair(&self, id: u64) -> Option<DBError>;
 }
 
 #[async_trait]
@@ -32,19 +32,33 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       }
    }
 
-   async fn find_keypair_by_id(&self, id: i32) -> Result<MasterKeyPair, DBError> {
-      let res = sqlx::query_as::<_, MasterKeyPair>("
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair 
-         where
-            id = ?
-      ").bind(id)
-      .fetch_one(self.db.get_pool())
-      .await;
+   async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError> {
+      let res = sqlx::query_as::<_, MasterKeyPair>(r#"
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair
+      "#).fetch_all(self.db.get_pool()).await;
 
       match res {
          Ok(v) => Ok(v),
          Err(e) => Err(DBError::Yabaii(e.to_string()))
       }
+   }
+
+   async fn find_keypair_by_id(&self, id: u64) -> Result<MasterKeyPair, DBError> {
+      let res = sqlx::query_as::<_, MasterKeyPair>("
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair 
+         where
+            id = ?
+      ").bind(id)
+      .fetch_optional(self.db.get_pool())
+      .await;
+
+      match res {
+         Ok(v) => match v {
+            Some(v) => Ok(v),
+            None => Err(DBError::NotFound)
+        },
+        Err(e) => Err(DBError::Yabaii(e.to_string()))
+     }
    }
 
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError> {
@@ -53,11 +67,14 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
          where
             keypair_hash = ?
       ").bind(hash)
-      .fetch_one(self.db.get_pool())
+      .fetch_optional(self.db.get_pool())
       .await;
    
       match res {
-         Ok(v) => Ok(v),
+         Ok(v) => match v {
+             Some(v) => Ok(v),
+             None => Err(DBError::NotFound)
+         },
          Err(e) => Err(DBError::Yabaii(e.to_string()))
       }
    }
@@ -66,8 +83,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       let current_time = Utc::now();
 
       let res = sqlx::query(
-         "insert into master_keypair(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?) 
-         returning id, public_key, private_key, keypair_hash, created_at, updated_at")
+         "insert into master_keypair(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
       .bind(keypair.public_key)
          .bind(keypair.private_key) 
          .bind(keypair.keypair_hash) 
@@ -77,7 +93,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       .await;
    
       match res {
-         Ok(v) => Ok( v.last_insert_id()),
+         Ok(v) => Ok(v.last_insert_id()),
          Err(e) => Err(DBError::Yabaii(e.to_string()))
       }
    }
@@ -109,7 +125,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    }
    
-   async fn delete_keypair(&self, id: i32) -> Option<DBError> {
+   async fn delete_keypair(&self, id: u64) -> Option<DBError> {
       let res = sqlx::query("delete from master_keypair where id = ?")
       .bind(id)
       .execute(self.db.get_pool())
