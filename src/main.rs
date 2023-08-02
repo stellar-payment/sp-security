@@ -14,8 +14,8 @@ mod service;
 mod state;
 mod entity;
 
-pub const BUILD_TIME: &'static str = env!("BUILD_TIME");
-pub const BUILD_VER: &'static str = env!("BUILD_VER");
+pub const BUILD_TIME: &'static str = env!("BUILD_TIMESTAMP");
+pub const BUILD_VER: &'static str = env!("BUILD_TAG");
 
 #[tokio::main]
 async fn main() {
