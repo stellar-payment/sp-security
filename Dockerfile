@@ -53,5 +53,5 @@ FROM gcr.io/distroless/cc-debian11 AS release
 WORKDIR /dist
 
 COPY --from=builder /build/target/release/sp-security ./sp-security
-
+COPY .env /dist/
 CMD ["/dist/sp-security"]
