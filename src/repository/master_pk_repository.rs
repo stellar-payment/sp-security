@@ -44,11 +44,11 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
    }
 
    async fn find_keypair_by_id(&self, id: u64) -> Result<MasterKeyPair, DBError> {
-      let res = sqlx::query_as::<_, MasterKeyPair>("
+      let res = sqlx::query_as::<_, MasterKeyPair>(r#"
          select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair 
          where
             id = ?
-      ").bind(id)
+      "#).bind(id)
       .fetch_optional(self.db.get_pool())
       .await;
 
@@ -62,11 +62,11 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
    }
 
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError> {
-      let res = sqlx::query_as::<_, MasterKeyPair>("
+      let res = sqlx::query_as::<_, MasterKeyPair>(r#"
          select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair 
          where
             keypair_hash = ?
-      ").bind(hash)
+      "#).bind(hash)
       .fetch_optional(self.db.get_pool())
       .await;
    

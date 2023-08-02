@@ -19,8 +19,8 @@ pub struct MasterPKService {
 #[async_trait]
 pub trait MasterPKServiceTrait {
    fn new(db: &Arc<Database>) -> Self;
-   async fn get_keypair_by_hash(&self, hash: String) -> Result<MasterPKResponse, KeypairError>;
    async fn get_keypairs(&self) -> Result<ListMasterPKResponse, KeypairError>;
+   async fn get_keypair_by_hash(&self, hash: String) -> Result<MasterPKResponse, KeypairError>;
    async fn create_keypair(&self) -> Result<MasterPKResponse, KeypairError>;
    // async fn update_keypair(&self, payload: MasterPKPayload) -> Option<KeypairError>;
    async fn delete_keypair(&self, hash: String) -> Option<KeypairError>;
