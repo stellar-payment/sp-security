@@ -20,7 +20,7 @@ impl DatabaseTrait for Database {
       let db = parameter::get("DATABASE_URL");
       let pool = MySqlPool::connect(&db).await?;
       
-      sqlx::migrate!().run(&pool).await?;
+      sqlx::migrate!().run(&pool).await.unwrap_or_else(|e| panic!("migration err: {}", e));
       Ok(Self { pool })
    }
 

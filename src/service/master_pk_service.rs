@@ -1,8 +1,14 @@
+use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::generic_array::GenericArray;
+use aes::cipher::typenum::U32;
+use aes::cipher::{BlockEncryptMut, KeyIvInit};
 use async_trait::async_trait;
+use base64::Engine;
 use p256::SecretKey;
 use std::sync::Arc;
 
 use crate::config::database::Database;
+use crate::config::parameter::get;
 use crate::dto::master_keypair::{ListMasterPKResponse, MasterPKResponse};
 use crate::entity::security::MasterKeyPair;
 use crate::error::keypair_error::KeypairError;
@@ -69,11 +75,31 @@ impl MasterPKServiceTrait for MasterPKService {
 
    async fn create_keypair(&self) -> Result<MasterPKResponse, KeypairError> {
       let secret = SecretKey::random(&mut OsRng);
-      let pk = secret.public_key();
 
-      // !todo revamp keygen and actually encrypt those string
-      let encoded_secret = general_purpose::STANDARD.encode(secret.to_bytes());
-      let encoded_pk = general_purpose::STANDARD.encode(pk.to_sec1_bytes());
+      let pk = secret.public_key().to_sec1_bytes();
+      let ppk = secret.to_bytes();
+
+      let key: GenericArray<u8, U32> =
+         GenericArray::clone_from_slice(&general_purpose::STANDARD.decode(get("DB_KEY")).unwrap());
+      let iv = [0x24; 16];
+      let key_len = key.len();
+
+      let mut ppk_block = [0u8; 256];
+      type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
+
+      ppk_block[..ppk.len()].copy_from_slice(&ppk);
+      let enc_secret = Aes256Cbc::new(&key.into(), &iv.into())
+         .encrypt_padded_mut::<Pkcs7>(&mut ppk_block, ppk.len())
+         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+
+      let mut pk_block = [0u8; 256];
+      pk_block[..pk.len()].copy_from_slice(&pk);
+      let enc_pk = Aes256Cbc::new(&key.into(), &iv.into())
+         .encrypt_padded_mut::<Pkcs7>(&mut pk_block, pk.len())
+         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+
+      let encoded_secret = general_purpose::STANDARD.encode(enc_secret);
+      let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
       let hashed = sha256::digest(format!("{}|{}", encoded_secret, encoded_pk));
 
       let payload = MasterKeyPair {

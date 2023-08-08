@@ -1,6 +1,11 @@
 use std::sync::Arc;
+use aes::cipher::{KeyIvInit, BlockEncryptMut};
+use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::generic_array::GenericArray;
+use aes::cipher::typenum::U32;
 
 use crate::config::database::Database;
+use crate::config::parameter::get;
 use crate::entity::security::PartnerKeyPair;
 use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use crate::dto::partner_keypair::{PartnerPKResponse, ListPartnerPKResponse, PartnerPKPayload};
@@ -70,7 +75,20 @@ impl PartnerPKServiceTrait for PartnerPKService {
 
 
    async fn create_keypair(&self, payload: PartnerPKPayload) -> Result<PartnerPKResponse, KeypairError> {
-      // !todo revamp keygen and actually encrypt those string
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(
+         &general_purpose::STANDARD.decode(get("DB_KEY")).unwrap(),
+      );
+      let iv = [0x24; 16];
+      let key_len = key.len();
+
+      let mut block = [0u8; 256];
+      type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
+
+      block[..payload.public_key.len()].copy_from_slice(payload.public_key.as_bytes());
+      let enc_pk = Aes256Cbc::new(&key.into(), &iv.into())
+         .encrypt_padded_mut::<Pkcs7>(&mut block, payload.public_key.len())
+         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+
       let encoded_pk = general_purpose::STANDARD.encode(payload.public_key);
       let hashed = sha256::digest(encoded_pk.clone());
 
