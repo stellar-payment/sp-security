@@ -2,8 +2,6 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use aes::cipher::{BlockEncryptMut, KeyIvInit};
-use base64::engine::GeneralPurpose;
-use p256::ecdsa::signature::Keypair;
 use rand_core::{OsRng, RngCore};
 use std::sync::Arc;
 
@@ -60,7 +58,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
                })
                .collect(),
          }),
-         Err(e) => Err(KeypairError::KeypairYabai(e.to_string())),
+         Err(e) => Err(KeypairError::Yabai(e.to_string())),
       };
    }
 
@@ -70,7 +68,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
       hash: String,
    ) -> Result<PartnerPKResponse, KeypairError> {
       if hash.is_empty() {
-         return Err(KeypairError::KeypairInvalid);
+         return Err(KeypairError::Invalid);
       };
 
       return match self
@@ -84,7 +82,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
             public_key: v.public_key,
             keypair_hash: v.keypair_hash,
          }),
-         Err(e) => Err(KeypairError::KeypairYabai(e.to_string())),
+         Err(e) => Err(KeypairError::Yabai(e.to_string())),
       };
    }
 
@@ -102,9 +100,9 @@ impl PartnerPKServiceTrait for PartnerPKService {
       type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
 
       block[..payload.public_key.len()].copy_from_slice(payload.public_key.as_bytes());
-      let enc_pk = Aes256Cbc::new(&key.into(), &iv.into())
+      let enc_pk = Aes256Cbc::new(&key, &iv.into())
          .encrypt_padded_mut::<Pkcs7>(&mut block, payload.public_key.len())
-         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+         .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
       let encoded_iv = general_purpose::STANDARD.encode(iv);
@@ -128,7 +126,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
             public_key: payload.public_key,
             keypair_hash: payload.keypair_hash,
          }),
-         Err(e) => Err(KeypairError::KeypairCreationError(e.to_string())),
+         Err(e) => Err(KeypairError::CreationError(e.to_string())),
       };
    }
 
@@ -143,9 +141,9 @@ impl PartnerPKServiceTrait for PartnerPKService {
       type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
 
       block[..payload.public_key.len()].copy_from_slice(payload.public_key.as_bytes());
-      let enc_pk = Aes256Cbc::new(&key.into(), &iv.into())
+      let enc_pk = Aes256Cbc::new(&key, &iv.into())
          .encrypt_padded_mut::<Pkcs7>(&mut block, payload.public_key.len())
-         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+         .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
       let encoded_iv = general_purpose::STANDARD.encode(iv);
@@ -163,14 +161,14 @@ impl PartnerPKServiceTrait for PartnerPKService {
          .update_partner_keypair(payload.clone())
          .await
       {
-         Some(e) => Err(KeypairError::KeypairYabai(e.to_string())),
+         Some(e) => Err(KeypairError::Yabai(e.to_string())),
          None => Ok(()),
       }
    }
 
    async fn delete_keypair(&self, hash: String) -> Result<(), KeypairError> {
       match self.repository.delete_partner_keypair(hash).await {
-         Some(e) => return Err(KeypairError::KeypairYabai(e.to_string())),
+         Some(e) => return Err(KeypairError::Yabai(e.to_string())),
          _ => Ok(()),
       }
    }

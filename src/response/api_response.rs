@@ -4,7 +4,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub struct ApiResponse<T: Serialize> {
+pub struct ApiResponse<T> {
    #[serde(skip)]
    status: u16,
    data: Option<T>,
@@ -18,30 +18,27 @@ pub struct ErrorResponse {
    message: Option<String>,
 }
 
-impl<T: Serialize> ApiResponse<T>
+impl<T> ApiResponse<T>
 where
    T: Serialize,
 {
    pub(crate) fn send(data: T) -> Self {
-      return ApiResponse {
+      ApiResponse {
          status: StatusCode::OK.as_u16(),
          data: Some(data),
          error: None,
-      };
+      }
    }
 }
 
 impl ErrorResponse {
    pub(crate) fn send(status: u16, code: u16, message: Option<String>) -> Response {
-      return ApiResponse {
-         status: status,
+      ApiResponse {
+         status,
          data: None,
-         error: Some(ErrorResponse {
-            code: code,
-            message: message,
-         }),
+         error: Some(ErrorResponse { code, message }),
       }
-      .into_response();
+      .into_response()
    }
 }
 

@@ -13,7 +13,7 @@ use crate::dto::master_keypair::{ListMasterPKResponse, MasterPKResponse};
 use crate::entity::security::MasterKeyPair;
 use crate::error::keypair_error::KeypairError;
 use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
-use base64::{engine::general_purpose, Engine as _};
+use base64::engine::general_purpose;
 use rand_core::{OsRng, RngCore};
 use sha256;
 
@@ -42,7 +42,7 @@ impl MasterPKServiceTrait for MasterPKService {
 
    async fn get_keypair_by_hash(&self, hash: String) -> Result<MasterPKResponse, KeypairError> {
       if hash.is_empty() {
-         return Err(KeypairError::KeypairInvalid);
+         return Err(KeypairError::Invalid);
       };
 
       return match self.repository.find_keypair_by_hash(hash).await {
@@ -52,7 +52,7 @@ impl MasterPKServiceTrait for MasterPKService {
             private_key: v.private_key,
             keypair_hash: v.keypair_hash,
          }),
-         Err(e) => Err(KeypairError::KeypairYabai(e.to_string())),
+         Err(e) => Err(KeypairError::Yabai(e.to_string())),
       };
    }
 
@@ -69,7 +69,7 @@ impl MasterPKServiceTrait for MasterPKService {
                })
                .collect(),
          }),
-         Err(e) => Err(KeypairError::KeypairYabai(e.to_string())),
+         Err(e) => Err(KeypairError::Yabai(e.to_string())),
       };
    }
 
@@ -88,15 +88,15 @@ impl MasterPKServiceTrait for MasterPKService {
       type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
 
       ppk_block[..ppk.len()].copy_from_slice(&ppk);
-      let enc_secret = Aes256Cbc::new(&key.into(), &iv.into())
+      let enc_secret = Aes256Cbc::new(&key, &iv.into())
          .encrypt_padded_mut::<Pkcs7>(&mut ppk_block, ppk.len())
-         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+         .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let mut pk_block = [0u8; 256];
       pk_block[..pk.len()].copy_from_slice(&pk);
-      let enc_pk = Aes256Cbc::new(&key.into(), &iv.into())
+      let enc_pk = Aes256Cbc::new(&key, &iv.into())
          .encrypt_padded_mut::<Pkcs7>(&mut pk_block, pk.len())
-         .map_err(|e| return KeypairError::KeypairCreationError(e.to_string()))?;
+         .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let encoded_secret = general_purpose::STANDARD.encode(enc_secret);
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
@@ -117,18 +117,18 @@ impl MasterPKServiceTrait for MasterPKService {
             private_key: payload.private_key,
             keypair_hash: payload.keypair_hash,
          }),
-         Err(e) => Err(KeypairError::KeypairCreationError(e.to_string())),
+         Err(e) => Err(KeypairError::CreationError(e.to_string())),
       };
    }
 
    async fn delete_keypair(&self, hash: String) -> Option<KeypairError> {
       let keypair = match self.repository.find_keypair_by_hash(hash).await {
          Ok(v) => v,
-         Err(e) => return Some(KeypairError::KeypairYabai(e.to_string())),
+         Err(e) => return Some(KeypairError::Yabai(e.to_string())),
       };
 
       match self.repository.delete_keypair(keypair.id).await {
-         Some(e) => return Some(KeypairError::KeypairYabai(e.to_string())),
+         Some(e) => return Some(KeypairError::Yabai(e.to_string())),
          _ => None,
       }
    }

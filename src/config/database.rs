@@ -1,6 +1,6 @@
 use crate::parameter;
 use async_trait::async_trait;
-use sqlx::{Error, MySql, MySqlPool, PgPool, Pool, Postgres};
+use sqlx::{Error, MySql, MySqlPool, Pool};
 
 pub struct Database {
    pool: Pool<MySql>,

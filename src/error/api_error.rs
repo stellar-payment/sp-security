@@ -1,7 +1,8 @@
 use crate::error::{db_error::DBError, keypair_error::KeypairError, security_error::SecurityError};
 use axum::response::{IntoResponse, Response};
-use thiserror::Error;
 
+use thiserror::Error;
+#[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
 pub enum ApiError {
    #[error(transparent)]

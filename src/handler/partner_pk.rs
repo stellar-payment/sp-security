@@ -8,14 +8,14 @@ use axum::Json;
 
 pub async fn handle_get_keypairs(
    State(state): State<PartnerPKState>,
-   Path(partner_id): Path<u64>
+   Path(partner_id): Path<u64>,
 ) -> Result<Json<ApiResponse<ListPartnerPKResponse>>, ApiError> {
    let res = state.service.get_keypairs(partner_id).await;
 
-   return match res {
+   match res {
       Ok(v) => Ok(Json(ApiResponse::send(v))),
       Err(e) => Err(e)?,
-   };
+   }
 }
 
 pub async fn handle_get_keypair_by_hash(
@@ -24,10 +24,10 @@ pub async fn handle_get_keypair_by_hash(
 ) -> Result<Json<ApiResponse<PartnerPKResponse>>, ApiError> {
    let res = state.service.get_keypair_by_hash(partner_id, hash).await;
 
-   return match res {
+   match res {
       Ok(v) => Ok(Json(ApiResponse::send(v))),
       Err(e) => Err(e)?,
-   };
+   }
 }
 
 pub async fn handle_generate_keypair(
@@ -36,20 +36,20 @@ pub async fn handle_generate_keypair(
 ) -> Result<Json<ApiResponse<PartnerPKResponse>>, ApiError> {
    let res = state.service.create_keypair(payload).await;
 
-   return match res {
+   match res {
       Ok(v) => Ok(Json(ApiResponse::send(v))),
       Err(e) => Err(e)?,
-   };
+   }
 }
 
 pub async fn handle_delete_keypair(
    State(state): State<PartnerPKState>,
-   Path(hash): Path<String>
+   Path(hash): Path<String>,
 ) -> Result<Json<ApiResponse<()>>, ApiError> {
    let res = state.service.delete_keypair(hash).await;
 
-   return match res {
+   match res {
       Err(e) => Err(e)?,
       _ => Ok(Json(ApiResponse::send(()))),
-   };
+   }
 }
