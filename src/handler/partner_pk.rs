@@ -49,7 +49,7 @@ pub async fn handle_delete_keypair(
    let res = state.service.delete_keypair(hash).await;
 
    return match res {
-      Some(e) => Err(e)?,
+      Err(e) => Err(e)?,
       _ => Ok(Json(ApiResponse::send(()))),
    };
 }

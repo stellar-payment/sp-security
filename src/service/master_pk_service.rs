@@ -14,7 +14,7 @@ use crate::entity::security::MasterKeyPair;
 use crate::error::keypair_error::KeypairError;
 use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
 use base64::{engine::general_purpose, Engine as _};
-use rand_core::OsRng;
+use rand_core::{OsRng, RngCore};
 use sha256;
 
 #[derive(Clone)]
@@ -81,8 +81,8 @@ impl MasterPKServiceTrait for MasterPKService {
 
       let key: GenericArray<u8, U32> =
          GenericArray::clone_from_slice(&general_purpose::STANDARD.decode(get("DB_KEY")).unwrap());
-      let iv = [0x24; 16];
-      let key_len = key.len();
+      let mut iv = [0x24; 16];
+      OsRng.fill_bytes(&mut iv);
 
       let mut ppk_block = [0u8; 256];
       type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
@@ -100,7 +100,8 @@ impl MasterPKServiceTrait for MasterPKService {
 
       let encoded_secret = general_purpose::STANDARD.encode(enc_secret);
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
-      let hashed = sha256::digest(format!("{}|{}", encoded_secret, encoded_pk));
+      let encoded_iv = general_purpose::STANDARD.encode(iv);
+      let hashed = sha256::digest(format!("{}|{}|{}", encoded_secret, encoded_pk, encoded_iv));
 
       let payload = MasterKeyPair {
          id: 0,
