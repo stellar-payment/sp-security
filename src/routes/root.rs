@@ -24,7 +24,7 @@ pub fn routes(db: Arc<Database>) -> IntoMakeService<Router> {
    };
 
    let router = Router::new()
-      .nest("/api", merged_router)
+      .nest("/api/v1", merged_router)
       .layer(axum::middleware::from_fn(build_version_header))
       .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 

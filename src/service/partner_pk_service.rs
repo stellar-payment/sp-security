@@ -82,7 +82,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
             public_key: v.public_key,
             keypair_hash: v.keypair_hash,
          }),
-         Err(e) => Err(KeypairError::Yabai(e.to_string())),
+         Err(_) => Err(KeypairError::NotFound),
       };
    }
 
