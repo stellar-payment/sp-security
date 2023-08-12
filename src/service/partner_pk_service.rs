@@ -9,7 +9,7 @@ use crate::config::database::Database;
 use crate::config::parameter::get;
 use crate::dto::partner_keypair::{ListPartnerPKResponse, PartnerPKPayload, PartnerPKResponse};
 use crate::entity::security::PartnerKeyPair;
-use crate::error::keypair_error::KeypairError;
+use crate::error::{db_error::DBError, keypair_error::KeypairError};
 use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
@@ -34,7 +34,7 @@ pub trait PartnerPKServiceTrait {
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError>;
    async fn update_keypair(&self, payload: PartnerPKPayload) -> Result<(), KeypairError>;
-   async fn delete_keypair(&self, hash: String) -> Result<(), KeypairError>;
+   async fn delete_keypair(&self, partner_id: u64, hash: String) -> Result<(), KeypairError>;
 }
 
 #[async_trait]
@@ -71,19 +71,21 @@ impl PartnerPKServiceTrait for PartnerPKService {
          return Err(KeypairError::Invalid);
       };
 
-      return match self
-         .repository
-         .find_partner_keypair_by_hash(partner_id, hash)
-         .await
-      {
-         Ok(v) => Ok(PartnerPKResponse {
+      let meta = match self.repository.find_partner_keypair_by_hash(hash).await {
+         Ok(v) => PartnerPKResponse {
             id: v.id,
             partner_id: v.partner_id,
             public_key: v.public_key,
             keypair_hash: v.keypair_hash,
-         }),
-         Err(_) => Err(KeypairError::NotFound),
+         },
+         Err(_) => return Err(KeypairError::NotFound),
       };
+
+      if meta.partner_id != partner_id {
+         Err(KeypairError::NoAccess)
+      } else {
+         Ok(meta)
+      }
    }
 
    async fn create_keypair(
@@ -166,7 +168,21 @@ impl PartnerPKServiceTrait for PartnerPKService {
       }
    }
 
-   async fn delete_keypair(&self, hash: String) -> Result<(), KeypairError> {
+   async fn delete_keypair(&self, partner_id: u64,  hash: String) -> Result<(), KeypairError> {
+      let meta = match self.repository.find_partner_keypair_by_hash(hash.clone()).await {
+         Ok(v) => v,
+         Err(e) => {
+            match e {
+              DBError::Yabaii(m) => return Err(KeypairError::Yabai(m)),
+              DBError::NotFound => return Err(KeypairError::NotFound),
+           }
+         }
+      };
+
+      if meta.partner_id != partner_id {
+         return Err(KeypairError::NoAccess)
+      }
+
       match self.repository.delete_partner_keypair(hash).await {
          Some(e) => return Err(KeypairError::Yabai(e.to_string())),
          _ => Ok(()),

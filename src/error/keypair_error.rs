@@ -7,6 +7,8 @@ use thiserror::Error;
 pub enum KeypairError {
    #[error("invalid keypair")]
    Invalid,
+   #[error("no access")]
+   NoAccess,
    #[error("keypair not found")]
    NotFound,
    #[error("keypair error: {0}")]
@@ -20,6 +22,7 @@ impl IntoResponse for KeypairError {
       let status_code = match self {
          KeypairError::Invalid => StatusCode::UNPROCESSABLE_ENTITY,
          KeypairError::NotFound => StatusCode::NOT_FOUND,
+         KeypairError::NoAccess => StatusCode::UNAUTHORIZED,
          KeypairError::Yabai(_) | KeypairError::CreationError(_) => {
             StatusCode::INTERNAL_SERVER_ERROR
          }

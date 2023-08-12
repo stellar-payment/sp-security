@@ -5,10 +5,11 @@ use crate::service::partner_pk_service::PartnerPKServiceTrait;
 use crate::state::partner_pk_state::PartnerPKState;
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 
 pub async fn handle_get_keypairs(
    State(state): State<PartnerPKState>,
-   Path(partner_id): Path<u64>,
+   WithRejection(Path(partner_id), _): WithRejection<Path<u64>, ApiError>,
 ) -> Result<Json<ApiResponse<ListPartnerPKResponse>>, ApiError> {
    let res = state.service.get_keypairs(partner_id).await;
 
@@ -20,7 +21,7 @@ pub async fn handle_get_keypairs(
 
 pub async fn handle_get_keypair_by_hash(
    State(state): State<PartnerPKState>,
-   Path((partner_id, hash)): Path<(u64, String)>,
+   WithRejection(Path((partner_id, hash)), _): WithRejection<Path<(u64, String)>, ApiError>,
 ) -> Result<Json<ApiResponse<PartnerPKResponse>>, ApiError> {
    let res = state.service.get_keypair_by_hash(partner_id, hash).await;
 
@@ -32,8 +33,10 @@ pub async fn handle_get_keypair_by_hash(
 
 pub async fn handle_generate_keypair(
    State(state): State<PartnerPKState>,
-   Json(payload): Json<PartnerPKPayload>,
+   WithRejection(Path(partner_id), _): WithRejection<Path<u64>, ApiError>,
+   WithRejection(Json(mut payload), _): WithRejection<Json<PartnerPKPayload>, ApiError>,
 ) -> Result<Json<ApiResponse<PartnerPKResponse>>, ApiError> {
+   payload.partner_id = partner_id;
    let res = state.service.create_keypair(payload).await;
 
    match res {
@@ -44,9 +47,9 @@ pub async fn handle_generate_keypair(
 
 pub async fn handle_delete_keypair(
    State(state): State<PartnerPKState>,
-   Path(hash): Path<String>,
+   WithRejection(Path((partner_id, hash)), _): WithRejection<Path<(u64, String)>, ApiError>,
 ) -> Result<Json<ApiResponse<()>>, ApiError> {
-   let res = state.service.delete_keypair(hash).await;
+   let res = state.service.delete_keypair(partner_id, hash).await;
 
    match res {
       Err(e) => Err(e)?,

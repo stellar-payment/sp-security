@@ -17,16 +17,8 @@ pub trait PartnerPKRepositoryTrait {
    fn new(conn: &Arc<Database>) -> Self;
 
    async fn find_partner_keypairs(&self, partner_id: u64) -> Result<Vec<PartnerKeyPair>, DBError>;
-   async fn find_partner_keypair_by_id(
-      &self,
-      partner_id: u64,
-      id: u64,
-   ) -> Result<PartnerKeyPair, DBError>;
-   async fn find_partner_keypair_by_hash(
-      &self,
-      partner_id: u64,
-      hash: String,
-   ) -> Result<PartnerKeyPair, DBError>;
+   async fn find_partner_keypair_by_id(&self, id: u64) -> Result<PartnerKeyPair, DBError>;
+   async fn find_partner_keypair_by_hash(&self, hash: String) -> Result<PartnerKeyPair, DBError>;
    async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<u64, DBError>;
    async fn update_partner_keypair(&self, keypair: PartnerKeyPair) -> Option<DBError>;
    async fn delete_partner_keypair(&self, id: String) -> Option<DBError>;
@@ -44,8 +36,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
          select id, partner_id, public_key, keypair_hash from partner_keypair
-         where
-            partner_id = ?
+         where partner_id = ?
       "#,
       )
       .bind(partner_id)
@@ -58,20 +49,14 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       }
    }
 
-   async fn find_partner_keypair_by_id(
-      &self,
-      partner_id: u64,
-      id: u64,
-   ) -> Result<PartnerKeyPair, DBError> {
+   async fn find_partner_keypair_by_id(&self, id: u64) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
       select id, partner_id, public_key, keypair_hash from partner_keypair
-      where
-         id = ? and partner_id = ?
+      where id = ?
    "#,
       )
       .bind(id)
-      .bind(partner_id)
       .fetch_optional(self.db.get_pool())
       .await;
 
@@ -84,19 +69,13 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       }
    }
 
-   async fn find_partner_keypair_by_hash(
-      &self,
-      partner_id: u64,
-      hash: String,
-   ) -> Result<PartnerKeyPair, DBError> {
+   async fn find_partner_keypair_by_hash(&self, hash: String) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
       select id, partner_id, public_key, keypair_hash from partner_keypair
-      where
-         partner_id = ? and keypair_hash = ?
+      where keypair_hash = ?
    "#,
       )
-      .bind(partner_id)
       .bind(hash)
       .fetch_optional(self.db.get_pool())
       .await;

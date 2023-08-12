@@ -5,7 +5,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 use crate::config::database::Database;
-use crate::handler::healthcheck;
+use crate::handler::root;
 use crate::layers::build_versioner::build_version_header;
 use crate::state::master_pk_state::MasterPKState;
 use crate::state::partner_pk_state::PartnerPKState;
@@ -20,7 +20,8 @@ pub fn routes(db: Arc<Database>) -> IntoMakeService<Router> {
       Router::new()
          .merge(master_pk::routes().with_state(master_pk_state))
          .merge(partner_pk::routes().with_state(partner_pk_state))
-         .merge(Router::new().route("/health", get(healthcheck::handle_healthcheck)))
+         .merge(Router::new().route("/ping", get(root::handle_healthcheck)))
+         .fallback(root::handle_fallback)
    };
 
    let router = Router::new()
