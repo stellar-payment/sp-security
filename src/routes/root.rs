@@ -1,11 +1,10 @@
 use axum::routing::{get, IntoMakeService};
 use axum::Router;
 use std::sync::Arc;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
 
 use crate::config::database::Database;
 use crate::handler::root;
+use crate::layers::api_logger::api_logger;
 use crate::layers::build_versioner::build_version_header;
 use crate::state::master_pk_state::MasterPKState;
 use crate::state::partner_pk_state::PartnerPKState;
@@ -27,7 +26,8 @@ pub fn routes(db: Arc<Database>) -> IntoMakeService<Router> {
    let router = Router::new()
       .nest("/api/v1", merged_router)
       .layer(axum::middleware::from_fn(build_version_header))
-      .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+      .layer(axum::middleware::from_fn(api_logger));
+      // .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
    router.into_make_service()
 }
