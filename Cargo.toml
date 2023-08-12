@@ -32,3 +32,6 @@ rand_core = {version = "0.6.4", default-features = false }
 hex = {version = "0.4.3", default-features = false }
 sha256 = {version = "1.2.2"}
 base64 = {version = "0.21.2", default-features = false }
+structured-logger = {version = "1.0.2"}
+log = {version ="0.4.19"}
+axum-extra = {version = "0.7.7"}
