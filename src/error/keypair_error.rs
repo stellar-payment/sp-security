@@ -1,6 +1,7 @@
 use crate::response::api_response::ErrorResponse;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use log::error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -28,6 +29,7 @@ impl IntoResponse for KeypairError {
          }
       };
 
+      error!("err: {}", self);
       ErrorResponse::send(status_code.as_u16(), 0, Some(self.to_string()))
    }
 }

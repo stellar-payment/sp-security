@@ -1,4 +1,4 @@
-create table partner_keypair (
+create table tb_partner_keypair (
     id bigint unsigned primary key auto_increment,
     partner_id bigint unsigned not null,
     public_key text not null,
@@ -6,7 +6,8 @@ create table partner_keypair (
     created_at datetime not null,
     updated_at datetime not null
 );
-create table master_keypair (
+
+create table tb_master_keypair (
     id bigint unsigned primary key auto_increment,
     public_key text not null,
     private_key text not null,

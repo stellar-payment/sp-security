@@ -34,7 +34,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from tb_master_keypair
       "#).fetch_all(self.db.get_pool()).await;
 
       match res {
@@ -45,7 +45,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    async fn find_keypair_by_id(&self, id: u64) -> Result<MasterKeyPair, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair 
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from tb_master_keypair 
          where
             id = ?
       "#).bind(id)
@@ -63,7 +63,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypair 
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from tb_master_keypair 
          where
             keypair_hash = ?
       "#).bind(hash)
@@ -83,7 +83,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       let current_time = Utc::now();
 
       let res = sqlx::query(
-         "insert into master_keypair(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
+         "insert into tb_master_keypair(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
       .bind(keypair.public_key)
          .bind(keypair.private_key) 
          .bind(keypair.keypair_hash) 
@@ -102,7 +102,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       let current_time = Utc::now();
 
       let res = sqlx::query(
-         "update master_keypair set 
+         "update tb_master_keypair set 
             public_key = ?, 
             private_key = ?, 
             keypair_hash = ?,  
@@ -126,7 +126,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
    }
    
    async fn delete_keypair(&self, id: u64) -> Option<DBError> {
-      let res = sqlx::query("delete from master_keypair where id = ?")
+      let res = sqlx::query("delete from tb_master_keypair where id = ?")
       .bind(id)
       .execute(self.db.get_pool())
       .await;

@@ -35,7 +35,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    async fn find_partner_keypairs(&self, partner_id: u64) -> Result<Vec<PartnerKeyPair>, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
-         select id, partner_id, public_key, keypair_hash from partner_keypair
+         select id, partner_id, public_key, keypair_hash from tb_partner_keypair
          where partner_id = ?
       "#,
       )
@@ -52,7 +52,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    async fn find_partner_keypair_by_id(&self, id: u64) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
-      select id, partner_id, public_key, keypair_hash from partner_keypair
+      select id, partner_id, public_key, keypair_hash from tb_partner_keypair
       where id = ?
    "#,
       )
@@ -72,7 +72,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    async fn find_partner_keypair_by_hash(&self, hash: String) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
-      select id, partner_id, public_key, keypair_hash from partner_keypair
+      select id, partner_id, public_key, keypair_hash from tb_partner_keypair
       where keypair_hash = ?
    "#,
       )
@@ -92,7 +92,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<u64, DBError> {
       let current_time = Utc::now();
 
-      let res = sqlx::query("insert into partner_keypair(partner_id, public_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
+      let res = sqlx::query("insert into tb_partner_keypair(partner_id, public_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
       .bind(keypair.partner_id)
       .bind(keypair.public_key)
       .bind(keypair.keypair_hash)
@@ -112,7 +112,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
 
       let res = sqlx::query(
          r#"
-         update partner_keypair set
+         update tb_partner_keypair set
             public_key = ?,
             keypair_hash = ?,
             updated_at = ?
@@ -135,7 +135,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    }
 
    async fn delete_partner_keypair(&self, hash: String) -> Option<DBError> {
-      let res = sqlx::query(r#"delete from partner_keypair where keypair_hash = ?"#)
+      let res = sqlx::query(r#"delete from tb_partner_keypair where keypair_hash = ?"#)
          .bind(hash)
          .execute(self.db.get_pool())
          .await;
