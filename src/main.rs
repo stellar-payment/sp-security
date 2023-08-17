@@ -2,6 +2,7 @@ use crate::config::database::DatabaseTrait;
 use crate::config::{database, parameter};
 use std::panic;
 use std::sync::Arc;
+use log::{info, error};
 use structured_logger::{async_json::new_writer, Builder};
 use tokio::io;
 
@@ -10,22 +11,22 @@ mod dto;
 mod entity;
 mod error;
 mod handler;
+mod helper;
 mod layers;
 mod repository;
 mod response;
 mod routes;
 mod service;
 mod state;
-mod helper;
 
 macro_rules! env_or {
-    ($name: expr, $default: expr) => {
-      if let Some(val)= option_env!($name) {
+   ($name: expr, $default: expr) => {
+      if let Some(val) = option_env!($name) {
          val
       } else {
          $default
       }
-    };
+   };
 }
 
 pub const BUILD_TIME: &str = env_or!("BUILD_TIMESTAMP", "unknown");
@@ -43,7 +44,6 @@ async fn main() {
          None => ("", 0),
       };
 
-
       if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
          log::error!(line=line, file=file; "{}", s);
       } else {
@@ -57,8 +57,10 @@ async fn main() {
       .unwrap_or_else(|e| panic!("database error: {}", e));
 
    let host = format!("0.0.0.0:{}", parameter::get("PORT"));
-   axum::Server::bind(&host.parse().unwrap())
+   match axum::Server::bind(&host.parse().unwrap())
       .serve(routes::root::routes(Arc::new(conn)))
-      .await
-      .unwrap_or_else(|e| panic!("server error: {}", e));
+      .await {
+         Ok(_) => info!("listening on {}", host),
+         Err(e) =>  error!("failed to connect error: {}", e)
+      }
 }

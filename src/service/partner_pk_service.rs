@@ -1,7 +1,6 @@
-use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
-use aes::cipher::{BlockEncryptMut, KeyIvInit};
+use log::error;
 use rand_core::{OsRng, RngCore};
 use std::sync::Arc;
 
@@ -10,6 +9,7 @@ use crate::config::parameter::get;
 use crate::dto::partner_keypair::{ListPartnerPKResponse, PartnerPKPayload, PartnerPKResponse};
 use crate::entity::security::PartnerKeyPair;
 use crate::error::{db_error::DBError, keypair_error::KeypairError};
+use crate::helper;
 use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
@@ -82,33 +82,49 @@ impl PartnerPKServiceTrait for PartnerPKService {
       };
 
       if meta.partner_id != partner_id {
-         Err(KeypairError::NoAccess)
-      } else {
-         Ok(meta)
+         return Err(KeypairError::NoAccess)
       }
+
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
+      let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
+
+      let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(|v| {
+         let mut buf = [0u8; 16];
+         buf[..16].copy_from_slice(&v);
+         buf
+      }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_ct = general_purpose::STANDARD.decode(encoded_pk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      
+      let pk = helper::security::aes256_decrypt(key, pk_iv, &pk_ct)
+         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
+      Ok(PartnerPKResponse{
+         id: meta.id,
+         partner_id: meta.partner_id,
+         public_key: String::from_utf8(pk).unwrap_or("".to_string()),
+         keypair_hash: meta.keypair_hash,
+      })
+
+
    }
 
    async fn create_keypair(
       &self,
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError> {
-      let key: GenericArray<u8, U32> =
-         GenericArray::clone_from_slice(&general_purpose::STANDARD.decode(get("DB_KEY")).unwrap());
+      println!("uwee");
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
 
+      println!("uwee");
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let mut block = [0u8; 256];
-      type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
-
-      block[..payload.public_key.len()].copy_from_slice(payload.public_key.as_bytes());
-      let enc_pk = Aes256Cbc::new(&key, &iv.into())
-         .encrypt_padded_mut::<Pkcs7>(&mut block, payload.public_key.len())
-         .map_err(|e| KeypairError::CreationError(e.to_string()))?;
-
+      let enc_pk = helper::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
       let encoded_iv = general_purpose::STANDARD.encode(iv);
       let hashed = sha256::digest(format!("{}|{}", encoded_pk, encoded_iv));
+
+      // todo!!: ENC then HMAC
 
       let payload = PartnerKeyPair {
          id: 0,
@@ -133,19 +149,12 @@ impl PartnerPKServiceTrait for PartnerPKService {
    }
 
    async fn update_keypair(&self, payload: PartnerPKPayload) -> Result<(), KeypairError> {
-      let key: GenericArray<u8, U32> =
-         GenericArray::clone_from_slice(&general_purpose::STANDARD.decode(get("DB_KEY")).unwrap());
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
 
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let mut block = [0u8; 256];
-      type Aes256Cbc = cbc::Encryptor<aes::Aes256>;
-
-      block[..payload.public_key.len()].copy_from_slice(payload.public_key.as_bytes());
-      let enc_pk = Aes256Cbc::new(&key, &iv.into())
-         .encrypt_padded_mut::<Pkcs7>(&mut block, payload.public_key.len())
-         .map_err(|e| KeypairError::CreationError(e.to_string()))?;
+      let enc_pk = helper::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
 
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
       let encoded_iv = general_purpose::STANDARD.encode(iv);
