@@ -85,7 +85,8 @@ impl PartnerPKServiceTrait for PartnerPKService {
          return Err(KeypairError::NoAccess)
       }
 
-      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
+      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
       let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
 
       let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(|v| {
@@ -94,7 +95,15 @@ impl PartnerPKServiceTrait for PartnerPKService {
          buf
       }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let pk_ct = general_purpose::STANDARD.decode(encoded_pk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      
+
+      let mut msg = pk_ct.clone();
+      msg.extend_from_slice(&pk_iv);
+
+      let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      helper::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
+         .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
+
+
       let pk = helper::security::aes256_decrypt(key, pk_iv, &pk_ct)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
@@ -104,33 +113,32 @@ impl PartnerPKServiceTrait for PartnerPKService {
          public_key: String::from_utf8(pk).unwrap_or("".to_string()),
          keypair_hash: meta.keypair_hash,
       })
-
-
    }
 
    async fn create_keypair(
       &self,
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError> {
-      println!("uwee");
-      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
+      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
-      println!("uwee");
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
       let enc_pk = helper::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
-      let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
+      let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
-      let hashed = sha256::digest(format!("{}|{}", encoded_pk, encoded_iv));
-
-      // todo!!: ENC then HMAC
+      
+      let mut msg = enc_pk.clone();
+      msg.extend_from_slice(&iv);
+      let hashed = helper::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {
          id: 0,
          partner_id: payload.partner_id,
          public_key: format!("{}.{}", encoded_pk, encoded_iv),
-         keypair_hash: hashed,
+         keypair_hash: general_purpose::STANDARD.encode(hashed),
       };
 
       return match self
@@ -156,15 +164,19 @@ impl PartnerPKServiceTrait for PartnerPKService {
 
       let enc_pk = helper::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
 
-      let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
+      let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
-      let hashed = sha256::digest(format!("{}|{}", encoded_pk, encoded_iv));
+
+      let mut msg = enc_pk.clone();
+      msg.extend_from_slice(&iv);
+      let hashed = helper::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {
          id: payload.id,
          partner_id: payload.partner_id,
-         public_key: encoded_pk,
-         keypair_hash: hashed,
+         public_key: format!("{}.{}", encoded_pk, encoded_iv),
+         keypair_hash: general_purpose::STANDARD.encode(hashed),
       };
 
       match self

@@ -15,7 +15,7 @@ dotenv = "0.15.0"
 serde =  { version = "1.0.152", default-features = false }
 jsonwebtoken = { default-features = false, version = "8.3.0" }
 thiserror = "1.0.40"
-chrono = {version = "0.4.24", default-features = false }
+chrono = {version = "0.4.24", features=["serde"], default-features = false }
 bcrypt = { default-features = false, version = "0.15.0" }
 serde_json = { default-features = false, version = "1.0.95" }
 mockall = "0.11.4"
@@ -34,3 +34,4 @@ base64 = {version = "0.21.2", default-features = false }
 structured-logger = {version = "1.0.2"}
 log = {version ="0.4.19"}
 axum-extra = {version = "0.7.7"}
+sha2 = {version = "0.10.7"}

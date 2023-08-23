@@ -15,7 +15,6 @@ use crate::helper;
 use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
 use base64::engine::general_purpose;
 use rand_core::{OsRng, RngCore};
-use sha256;
 
 #[derive(Clone)]
 pub struct MasterPKService {
@@ -52,9 +51,15 @@ impl MasterPKServiceTrait for MasterPKService {
          },
       };
 
-      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
+      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
+
       let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
       let (encoded_ppk, encoded_ppk_iv) = meta.private_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
+
+      if encoded_pk_iv != encoded_ppk_iv {
+         return Err(KeypairError::IntegrityCheckFailed("iv missmatch".to_string()));
+      }
 
       let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(|v| {
          let mut buf = [0u8; 16];
@@ -63,16 +68,24 @@ impl MasterPKServiceTrait for MasterPKService {
       }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let pk_ct = general_purpose::STANDARD.decode(encoded_pk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       
-      let pk = helper::security::aes256_decrypt(key, pk_iv, &pk_ct)
-         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
-
       let ppk_iv = general_purpose::STANDARD.decode(encoded_ppk_iv).map(|v| {
          let mut buf = [0u8; 16];
          buf[..16].copy_from_slice(&v);
          buf
       }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let ppk_ct = general_purpose::STANDARD.decode(encoded_ppk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      
+
+      let mut msg = pk_ct.clone();
+      msg.extend(ppk_ct.clone());
+      msg.extend_from_slice(&pk_iv);
+
+      let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      helper::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
+         .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
+
+      let pk = helper::security::aes256_decrypt(key, pk_iv, &pk_ct)
+         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
       let ppk = helper::security::aes256_decrypt(key, ppk_iv, &ppk_ct)
       .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
@@ -106,24 +119,30 @@ impl MasterPKServiceTrait for MasterPKService {
 
       let pk = secret.public_key().to_sec1_bytes();
       let ppk = secret.to_bytes();
-
-      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
       let mut iv = [0x24; 16];
       OsRng.fill_bytes(&mut iv);
-      
-      let enc_secret = helper::security::aes256_encrypt(key, iv, &ppk);
+
+      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
+
+      let enc_secret = helper::security::aes256_encrypt(key, iv, &ppk.clone());
       let enc_pk = helper::security::aes256_encrypt(key, iv, &pk);
 
-      let encoded_secret = general_purpose::STANDARD.encode(enc_secret);
-      let encoded_pk = general_purpose::STANDARD.encode(enc_pk);
+      let encoded_secret = general_purpose::STANDARD.encode(enc_secret.clone());
+      let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
-      let hashed = sha256::digest(format!("{}|{}|{}", encoded_secret, encoded_pk, encoded_iv));
+
+      let mut msg = enc_pk.clone();
+      msg.extend(enc_secret.clone());
+      msg.extend_from_slice(&iv);
+      let hashed = helper::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = MasterKeyPair {
          id: 0,
          public_key: format!("{}.{}", encoded_pk, encoded_iv),
          private_key: format!("{}.{}", encoded_secret, encoded_iv),
-         keypair_hash: hashed,
+         keypair_hash: general_purpose::STANDARD.encode(hashed),
       };
 
       return match self.repository.insert_keypair(payload.clone()).await {

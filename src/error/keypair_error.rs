@@ -12,6 +12,8 @@ pub enum KeypairError {
    NoAccess,
    #[error("keypair not found")]
    NotFound,
+   #[error("keypair integrity check failed: {0}")]
+   IntegrityCheckFailed(String),
    #[error("keypair error: {0}")]
    Yabai(String),
    #[error("failed to create keypair: {0}")]
@@ -24,6 +26,7 @@ impl IntoResponse for KeypairError {
          KeypairError::Invalid => StatusCode::UNPROCESSABLE_ENTITY,
          KeypairError::NotFound => StatusCode::NOT_FOUND,
          KeypairError::NoAccess => StatusCode::UNAUTHORIZED,
+         KeypairError::IntegrityCheckFailed(_) => StatusCode::GONE,
          KeypairError::Yabai(_) | KeypairError::CreationError(_) => {
             StatusCode::INTERNAL_SERVER_ERROR
          }

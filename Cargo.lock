@@ -401,6 +401,7 @@ dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "num-traits",
+ "serde",
  "winapi",
 ]
 
@@ -2106,6 +2107,7 @@ dependencies = [
  "rand_core",
  "serde",
  "serde_json",
+ "sha2",
  "sha256",
  "sqlx",
  "sqlx-cli",
