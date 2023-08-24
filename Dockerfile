@@ -1,29 +1,25 @@
-FROM rust:1.70.0-slim-buster AS builder
+FROM lukemathwalker/cargo-chef:latest-rust-1.70-slim-buster AS chef
+WORKDIR /app
+
+FROM chef as planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef as builder
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
 
 RUN apt-get update && \
     apt-get install -y build-essential wget pkg-config libssl-dev && \
     rm -rf /var/lib/apt/lists/*
-
-COPY Cargo.toml Cargo.lock /app/
-
-
-# WORKDIR /build
-WORKDIR /app
-RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
-
-COPY ./src /app/src
 
 ARG BUILD_TAG
 ARG BUILD_TIMESTAMP
 
 ENV BUILD_TAG = ${BUILD_TAG}
 ENV BUILD_TIMESTAMP = ${BUILD_TIMESTAMP}
-
-RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
-    set -e
-    touch /app/src/main.rs
-    cargo build --release
-EOF
+RUN cargo build --release
 
 # Distribute the binary
 FROM gcr.io/distroless/cc-debian11 AS release
