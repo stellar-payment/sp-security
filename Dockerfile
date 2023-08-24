@@ -6,7 +6,7 @@ RUN apt-get update && \
 
 COPY Cargo.toml Cargo.lock /app/
 
-RUN cargo new /app/
+RUN cargo init /app/
 
 # WORKDIR /build
 WORKDIR /app
