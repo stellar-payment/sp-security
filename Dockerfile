@@ -20,10 +20,10 @@ ARG BUILD_TIMESTAMP
 ENV BUILD_TAG = ${BUILD_TAG}
 ENV BUILD_TIMESTAMP = ${BUILD_TIMESTAMP}
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
-    set -e
-    touch /app/src/main.rs
-    cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF \
+    set -e \
+    touch /app/src/main.rs \
+    cargo build --release \
     EOF
 
 # Distribute the binary
