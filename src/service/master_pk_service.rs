@@ -117,6 +117,9 @@ impl MasterPKServiceTrait for MasterPKService {
    async fn create_keypair(&self) -> Result<MasterPKResponse, KeypairError> {
       let secret = SecretKey::random(&mut OsRng);
 
+      let sk = SecretKey::random(&mut OsRng).public_key();
+
+      // let pk = c.to_sec1_bytes();
       let pk = secret.public_key().to_sec1_bytes();
       let ppk = secret.to_bytes();
       let mut iv = [0x24; 16];
