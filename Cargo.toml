@@ -3,9 +3,21 @@ name = "sp-security"
 version = "1.1.1"
 edition = "2021"
 
+[[bin]]
+name = "backend"
+path = "src/main.rs"
+
+[[bin]]
+name = "local-client"
+path = "local-client/src/main.rs"
+
+[workspace]
+members = ["corelib", "local-client"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+corelib = {path = "./corelib"}
 axum = { version = "0.6.3", features = ["json", "tokio"] }
 hyper = { version = "0.14.23", default-features = false }
 tokio = { version = "1.24.2", default-features = false }

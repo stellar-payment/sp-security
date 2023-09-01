@@ -8,11 +8,11 @@ use p256::{SecretKey, PublicKey};
 use sha2::Sha256;
 use hkdf::Hkdf;
 
+use crate::security_error::SecurityError;
 
-use crate::error::security_error::SecurityError;
+
 
 // AES-256-CBC
-
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 

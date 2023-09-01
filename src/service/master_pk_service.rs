@@ -11,7 +11,7 @@ use crate::dto::master_keypair::{ListMasterPKResponse, MasterPKResponse};
 use crate::entity::security::MasterKeyPair;
 use crate::error::db_error::DBError;
 use crate::error::keypair_error::KeypairError;
-use crate::helper;
+use corelib;
 use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
 use base64::engine::general_purpose;
 use rand_core::{OsRng, RngCore};
@@ -80,13 +80,13 @@ impl MasterPKServiceTrait for MasterPKService {
       msg.extend_from_slice(&pk_iv);
 
       let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      helper::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
+      corelib::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
          .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
-      let pk = helper::security::aes256_decrypt(key, pk_iv, &pk_ct)
+      let pk = corelib::security::aes256_decrypt(key, pk_iv, &pk_ct)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
-      let ppk = helper::security::aes256_decrypt(key, ppk_iv, &ppk_ct)
+      let ppk = corelib::security::aes256_decrypt(key, ppk_iv, &ppk_ct)
       .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       Ok(MasterPKResponse {
@@ -116,10 +116,6 @@ impl MasterPKServiceTrait for MasterPKService {
 
    async fn create_keypair(&self) -> Result<MasterPKResponse, KeypairError> {
       let secret = SecretKey::random(&mut OsRng);
-
-      let sk = SecretKey::random(&mut OsRng).public_key();
-
-      // let pk = c.to_sec1_bytes();
       let pk = secret.public_key().to_sec1_bytes();
       let ppk = secret.to_bytes();
       let mut iv = [0x24; 16];
@@ -128,8 +124,8 @@ impl MasterPKServiceTrait for MasterPKService {
       let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
-      let enc_secret = helper::security::aes256_encrypt(key, iv, &ppk.clone());
-      let enc_pk = helper::security::aes256_encrypt(key, iv, &pk);
+      let enc_secret = corelib::security::aes256_encrypt(key, iv, &ppk.clone());
+      let enc_pk = corelib::security::aes256_encrypt(key, iv, &pk);
 
       let encoded_secret = general_purpose::STANDARD.encode(enc_secret.clone());
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
@@ -138,7 +134,7 @@ impl MasterPKServiceTrait for MasterPKService {
       let mut msg = enc_pk.clone();
       msg.extend(enc_secret.clone());
       msg.extend_from_slice(&iv);
-      let hashed = helper::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = MasterKeyPair {

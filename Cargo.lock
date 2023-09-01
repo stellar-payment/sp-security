@@ -499,6 +499,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 
 [[package]]
+name = "corelib"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "axum",
+ "cbc",
+ "hkdf",
+ "hmac",
+ "p256",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1283,6 +1297,10 @@ name = "linux-raw-sys"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
+
+[[package]]
+name = "local-client"
+version = "0.1.0"
 
 [[package]]
 name = "lock_api"
@@ -2097,6 +2115,7 @@ dependencies = [
  "bcrypt",
  "cbc",
  "chrono",
+ "corelib",
  "dotenv",
  "hex",
  "hkdf",

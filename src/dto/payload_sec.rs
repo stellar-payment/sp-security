@@ -17,8 +17,7 @@ pub struct EncryptDataResponse {
 pub struct DecryptDataPayload {
     pub partner_id: u64,
     pub data: String,
-    pub tag: String,
-    pub secret_key: String
+    pub tag: String
 }
 
 #[derive(Clone, Serialize, Deserialize)]

@@ -1,5 +1,5 @@
 use crate::error::{db_error::DBError, keypair_error::KeypairError, security_error::SecurityError};
-use crate::response::api_response::{ApiResponse, ErrorResponse};
+use crate::response::api_response::ErrorResponse;
 use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 

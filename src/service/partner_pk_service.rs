@@ -1,6 +1,5 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
-use log::error;
 use rand_core::{OsRng, RngCore};
 use std::sync::Arc;
 
@@ -9,7 +8,7 @@ use crate::config::parameter::get;
 use crate::dto::partner_keypair::{ListPartnerPKResponse, PartnerPKPayload, PartnerPKResponse};
 use crate::entity::security::PartnerKeyPair;
 use crate::error::{db_error::DBError, keypair_error::KeypairError};
-use crate::helper;
+use corelib;
 use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
@@ -100,11 +99,11 @@ impl PartnerPKServiceTrait for PartnerPKService {
       msg.extend_from_slice(&pk_iv);
 
       let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      helper::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
+      corelib::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
          .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
 
-      let pk = helper::security::aes256_decrypt(key, pk_iv, &pk_ct)
+      let pk = corelib::security::aes256_decrypt(key, pk_iv, &pk_ct)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       Ok(PartnerPKResponse{
@@ -125,13 +124,13 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let enc_pk = helper::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
+      let enc_pk = corelib::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
       
       let mut msg = enc_pk.clone();
       msg.extend_from_slice(&iv);
-      let hashed = helper::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {
@@ -162,14 +161,14 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let enc_pk = helper::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
+      let enc_pk = corelib::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
 
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
 
       let mut msg = enc_pk.clone();
       msg.extend_from_slice(&iv);
-      let hashed = helper::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {

@@ -8,17 +8,20 @@ use crate::layers::api_logger::api_logger;
 use crate::layers::build_versioner::build_version_header;
 use crate::state::master_pk_state::MasterPKState;
 use crate::state::partner_pk_state::PartnerPKState;
+use crate::state::payload_sec_state::PayloadSecurityState;
 
-use super::{master_pk, partner_pk};
+use super::{master_pk, partner_pk, security};
 
 pub fn routes(db: Arc<Database>) -> IntoMakeService<Router> {
    let merged_router: Router = {
       let master_pk_state = MasterPKState::new(&db);
       let partner_pk_state = PartnerPKState::new(&db);
+      let payload_enc_state = PayloadSecurityState::new(&db);
 
       Router::new()
          .merge(master_pk::routes().with_state(master_pk_state))
          .merge(partner_pk::routes().with_state(partner_pk_state))
+         .merge(security::routes().with_state(payload_enc_state))
          .merge(Router::new().route("/ping", get(root::handle_healthcheck)))
          .fallback(root::handle_fallback)
    };
