@@ -22,7 +22,7 @@ impl DatabaseTrait for Database {
          .await
          .unwrap_or_else(|e| panic!("connect to database err: {}", e));
 
-      sqlx::migrate!()
+      sqlx::migrate!("../../migrations")
          .run(&pool)
          .await
          .unwrap_or_else(|e| panic!("migration err: {}", e));

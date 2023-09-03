@@ -10,8 +10,6 @@ use hkdf::Hkdf;
 
 use crate::security_error::SecurityError;
 
-
-
 // AES-256-CBC
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
