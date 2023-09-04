@@ -33,7 +33,7 @@ pub fn generate_shared_key(secret: &ecdh::SharedSecret) -> Result<Vec<u8>, Secur
    // todo: determine salt to be used
    let key = secret.extract::<Sha256>(Some(b""));
 
-   let mut shared_key = [0u8; 42]; 
+   let mut shared_key = [0u8; 64]; 
    match Hkdf::expand(&key, &[], &mut shared_key) {
       Ok(_) => Ok(shared_key.to_vec()),
       Err(e) => Err(SecurityError::GenericError(e.to_string()))

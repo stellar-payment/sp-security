@@ -2,7 +2,7 @@ use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use async_trait::async_trait;
 use base64::Engine;
-use p256::SecretKey;
+use p256::{SecretKey, PublicKey};
 use std::sync::Arc;
 
 use crate::config::database::Database;
@@ -88,6 +88,11 @@ impl MasterPKServiceTrait for MasterPKService {
 
       let ppk = corelib::security::aes256_decrypt(key, ppk_iv, &ppk_ct)
       .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
+
+      // validate key
+      let _ = SecretKey::from_slice(&ppk).map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
+      let _ = PublicKey::from_sec1_bytes(&pk).map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
       Ok(MasterPKResponse {
          id: meta.id,

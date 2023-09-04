@@ -1,5 +1,6 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
+use p256::PublicKey;
 use rand_core::{OsRng, RngCore};
 use std::sync::Arc;
 
@@ -8,7 +9,7 @@ use crate::config::parameter::get;
 use crate::dto::partner_keypair::{ListPartnerPKResponse, PartnerPKPayload, PartnerPKResponse};
 use crate::entity::security::PartnerKeyPair;
 use crate::error::{db_error::DBError, keypair_error::KeypairError};
-use corelib;
+use corelib::{security, mapper};
 use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
@@ -88,28 +89,25 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
       let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
 
-      let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(|v| {
-         let mut buf = [0u8; 16];
-         buf[..16].copy_from_slice(&v);
-         buf
-      }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(mapper::vec_to_arr).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let pk_ct = general_purpose::STANDARD.decode(encoded_pk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let mut msg = pk_ct.clone();
       msg.extend_from_slice(&pk_iv);
 
       let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      corelib::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
+      security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
          .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
-
-      let pk = corelib::security::aes256_decrypt(key, pk_iv, &pk_ct)
+      let pk = security::aes256_decrypt(key, pk_iv, &pk_ct)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
+      let _ = PublicKey::from_sec1_bytes(&pk).unwrap();
 
       Ok(PartnerPKResponse{
          id: meta.id,
          partner_id: meta.partner_id,
-         public_key: String::from_utf8(pk).unwrap_or("".to_string()),
+         public_key: general_purpose::STANDARD.encode(pk),
          keypair_hash: meta.keypair_hash,
       })
    }
@@ -124,13 +122,15 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let enc_pk = corelib::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
+      let public_key = general_purpose::STANDARD.decode(payload.public_key).map_err(|e| KeypairError::CreationError(e.to_string()))?;
+
+      let enc_pk = security::aes256_encrypt(key, iv, &public_key);
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
       
       let mut msg = enc_pk.clone();
       msg.extend_from_slice(&iv);
-      let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {
@@ -161,14 +161,14 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let enc_pk = corelib::security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
+      let enc_pk = security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
 
       let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
       let encoded_iv = general_purpose::STANDARD.encode(iv);
 
       let mut msg = enc_pk.clone();
       msg.extend_from_slice(&iv);
-      let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {

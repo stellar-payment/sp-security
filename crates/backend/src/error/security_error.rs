@@ -33,10 +33,11 @@ impl IntoResponse for SecurityError {
        };
  
        match self {
-          Self::GenericError(_) => ErrorResponse::send(
+          Self::GenericError(v) => ErrorResponse::send(
              status_code.as_u16(),
              0,
-             Some("oops, something when wrong".to_string()),
+            //  Some("oops, something when wrong".to_string()),
+             Some(v),
           ),
           _ => ErrorResponse::send(status_code.as_u16(), 0, Some(self.to_string())),
        }
