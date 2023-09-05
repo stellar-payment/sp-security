@@ -1,4 +1,4 @@
-use crate::dto::partner_keypair::{ListPartnerPKResponse, PartnerPKPayload, PartnerPKResponse};
+use crate::dto::partner_keypair::{PartnerPKPayload, PartnerPKResponse};
 use crate::error::api_error::ApiError;
 use crate::response::api_response::ApiResponse;
 use crate::service::partner_pk_service::PartnerPKServiceTrait;
@@ -10,7 +10,7 @@ use axum_extra::extract::WithRejection;
 pub async fn handle_get_keypairs(
    State(state): State<PartnerPKState>,
    WithRejection(Path(partner_id), _): WithRejection<Path<u64>, ApiError>,
-) -> Result<Json<ApiResponse<ListPartnerPKResponse>>, ApiError> {
+) -> Result<Json<ApiResponse<PartnerPKResponse>>, ApiError> {
    let res = state.service.get_keypairs(partner_id).await;
 
    match res {

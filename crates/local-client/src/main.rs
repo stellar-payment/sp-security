@@ -11,11 +11,12 @@ pub struct PartnerPKPayload {
    pub public_key: String,   
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct DecryptDataPayload {
-    pub partner_id: u64,
-    pub data: String,
-    pub tag: String
+   pub keypair_hash: String,
+   pub partner_id: u64,
+   pub data: String,
+   pub tag: String
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -33,6 +34,19 @@ pub struct EncryptDataPayload {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DecryptDataResponse {
     pub data: String
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MasterPKResponse {
+   pub id: u64,
+   pub public_key: String,
+   pub keypair_hash: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ListMasterPKResponse {
+   pub keys: Vec<MasterPKResponse>,
 }
 
 
@@ -61,9 +75,25 @@ async fn main() {
    //      .unwrap_or_else(|e| panic!("{e}"));
    //  println!("resp: {}", res.text().await.unwrap_or_else(|e| panic!("{e}")));
 
+   // fetch public key
+   let list_mpk = reqwest::get("http://localhost:7780/api/v1/keypairs/master").await
+      .map_err(|e| panic!("{e}"))
+      .unwrap()
+      .json::<ApiResponse<ListMasterPKResponse>>().await
+      .unwrap()
+      .data.unwrap();
+   let mpk_hash = list_mpk.keys.last().unwrap();
+
+   let mpk = reqwest::get(format!("http://localhost:7780/api/v1/keypairs/master/hash/{}", mpk_hash.keypair_hash.clone())).await
+      .map_err(|e| panic!("{e}"))
+      .unwrap()
+      .json::<ApiResponse<MasterPKResponse>>().await
+      .unwrap();
+   let master_pk = general_purpose::STANDARD.decode(mpk.data.unwrap().public_key).unwrap_or_else(|e| panic!("{e}"));
+
     // public key
-   let master_pk = general_purpose::STANDARD.decode("BHyX9xmySecQZ0Aizhk4ZxlQQKLv2K32FOj3StCuTAFJAVDsu1qpvivw5Nzg80qETLoSRHUpR931+QOQlhRKeCM=")
-    .unwrap_or_else(|e| panic!("{e}"));
+   // let master_pk = general_purpose::STANDARD.decode("BHyX9xmySecQZ0Aizhk4ZxlQQKLv2K32FOj3StCuTAFJAVDsu1qpvivw5Nzg80qETLoSRHUpR931+QOQlhRKeCM=")
+   //  .unwrap_or_else(|e| panic!("{e}"));
 
     // secret key
    let partner_pk = general_purpose::STANDARD.decode("2K/vz6mPlr3rlyDtu76LxJG5jMeDL7TsgzeTeoC5Ifo=")
@@ -107,7 +137,8 @@ async fn main() {
          general_purpose::STANDARD.encode(iv)
       ),
       tag: general_purpose::STANDARD.encode(mac),
-      partner_id: 6,
+      partner_id: 99,
+      keypair_hash: mpk_hash.keypair_hash.clone()
    };
 
 

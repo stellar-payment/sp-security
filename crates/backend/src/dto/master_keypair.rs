@@ -11,7 +11,6 @@ pub struct MasterPKPayload {
 pub struct MasterPKResponse {
    pub id: u64,
    pub public_key: String,
-   pub private_key: String,
    pub keypair_hash: String,
 }
 

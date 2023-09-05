@@ -16,7 +16,7 @@ pub struct PartnerPKRepository {
 pub trait PartnerPKRepositoryTrait {
    fn new(conn: &Arc<Database>) -> Self;
 
-   async fn find_partner_keypairs(&self, partner_id: u64) -> Result<Vec<PartnerKeyPair>, DBError>;
+   async fn find_partner_keypairs(&self, partner_id: u64) -> Result<PartnerKeyPair, DBError>;
    async fn find_partner_keypair_by_id(&self, id: u64) -> Result<PartnerKeyPair, DBError>;
    async fn find_partner_keypair_by_hash(&self, hash: String) -> Result<PartnerKeyPair, DBError>;
    async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<u64, DBError>;
@@ -32,7 +32,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       }
    }
 
-   async fn find_partner_keypairs(&self, partner_id: u64) -> Result<Vec<PartnerKeyPair>, DBError> {
+   async fn find_partner_keypairs(&self, partner_id: u64) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
          select id, partner_id, public_key, keypair_hash from tb_partner_keypair
@@ -40,11 +40,14 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       "#,
       )
       .bind(partner_id)
-      .fetch_all(self.db.get_pool())
+      .fetch_optional(self.db.get_pool())
       .await;
 
       match res {
-         Ok(v) => Ok(v),
+         Ok(v) => match v {
+            Some(v) => Ok(v),
+            None => Err(DBError::NotFound),
+         },
          Err(e) => Err(DBError::Yabaii(e.to_string())),
       }
    }

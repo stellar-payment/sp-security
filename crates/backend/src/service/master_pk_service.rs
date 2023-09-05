@@ -97,7 +97,6 @@ impl MasterPKServiceTrait for MasterPKService {
       Ok(MasterPKResponse {
          id: meta.id,
          public_key: general_purpose::STANDARD.encode(pk),
-         private_key: general_purpose::STANDARD.encode(ppk),
          keypair_hash: meta.keypair_hash,
       })
    }
@@ -110,7 +109,6 @@ impl MasterPKServiceTrait for MasterPKService {
                .map(|kp| MasterPKResponse {
                   id: kp.id,
                   public_key: kp.public_key,
-                  private_key: kp.private_key,
                   keypair_hash: kp.keypair_hash,
                })
                .collect(),
@@ -153,7 +151,6 @@ impl MasterPKServiceTrait for MasterPKService {
          Ok(v) => Ok(MasterPKResponse {
             id: v,
             public_key: payload.public_key,
-            private_key: payload.private_key,
             keypair_hash: payload.keypair_hash,
          }),
          Err(e) => Err(KeypairError::CreationError(e.to_string())),

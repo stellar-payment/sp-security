@@ -105,7 +105,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       &self,
       payload: DecryptDataPayload,
    ) -> Result<DecryptDataResponse, SecurityError> {
-      let master_data = match self.master_repository.find_keypair_by_id(9).await {
+      let master_data = match self.master_repository.find_keypair_by_hash(payload.keypair_hash).await {
          Ok(v) => v,
          Err(e) => {
             log::error!("{e}");
@@ -115,7 +115,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
 
       let partner_data = match self
          .partner_repository
-         .find_partner_keypair_by_id(payload.partner_id)
+         .find_partner_keypairs(payload.partner_id)
          .await
       {
          Ok(v) => v,
@@ -124,9 +124,6 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
             return Err(SecurityError::GenericError(e.to_string()))
          },
       };
-
-      println!("PHash: {}", partner_data.keypair_hash);
-      println!("MHash: {}", master_data.keypair_hash);
 
       let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| SecurityError::GenericError(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
@@ -167,9 +164,6 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       let enc_key = &secret_key[0..32];
       let mac_key = &secret_key[32..64];
       
-      println!("enc key: {}", general_purpose::STANDARD.encode(enc_key));
-      println!("mac key: {}", general_purpose::STANDARD.encode(mac_key));
-
       let (encoded_data, encoded_iv) = payload
          .data
          .split_once('.')
@@ -183,7 +177,6 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
          .map_err(|e| SecurityError::GenericError(e.to_string()))?;
       let mtag = security::hmac512_hash(mac_key, &ct).map_err(SecurityError::from)?;
 
-      println!("mtag: {}", general_purpose::STANDARD.encode(mtag.clone()));
       security::hmac512_verify(mac_key, &ct, &mtag).map_err(SecurityError::from)?;
       security::hmac512_verify(mac_key, &ct, &tag).map_err(SecurityError::from)?;
 

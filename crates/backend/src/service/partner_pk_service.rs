@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::config::database::Database;
 use crate::config::parameter::get;
-use crate::dto::partner_keypair::{ListPartnerPKResponse, PartnerPKPayload, PartnerPKResponse};
+use crate::dto::partner_keypair::{PartnerPKPayload, PartnerPKResponse};
 use crate::entity::security::PartnerKeyPair;
 use crate::error::{db_error::DBError, keypair_error::KeypairError};
 use corelib::{security, mapper};
@@ -23,7 +23,7 @@ pub struct PartnerPKService {
 pub trait PartnerPKServiceTrait {
    fn new(db: &Arc<Database>) -> Self;
 
-   async fn get_keypairs(&self, partner_id: u64) -> Result<ListPartnerPKResponse, KeypairError>;
+   async fn get_keypairs(&self, partner_id: u64) -> Result<PartnerPKResponse, KeypairError>;
    async fn get_keypair_by_hash(
       &self,
       partner_id: u64,
@@ -45,18 +45,13 @@ impl PartnerPKServiceTrait for PartnerPKService {
       }
    }
 
-   async fn get_keypairs(&self, partner_id: u64) -> Result<ListPartnerPKResponse, KeypairError> {
+   async fn get_keypairs(&self, partner_id: u64) -> Result<PartnerPKResponse, KeypairError> {
       return match self.repository.find_partner_keypairs(partner_id).await {
-         Ok(v) => Ok(ListPartnerPKResponse {
-            keys: v
-               .into_iter()
-               .map(|kp| PartnerPKResponse {
-                  id: kp.id,
-                  partner_id: kp.partner_id,
-                  public_key: kp.public_key,
-                  keypair_hash: kp.keypair_hash,
-               })
-               .collect(),
+         Ok(v) => Ok(PartnerPKResponse {
+            id: v.id,
+            partner_id: v.partner_id,
+            public_key: v.public_key,
+            keypair_hash: v.keypair_hash,
          }),
          Err(e) => Err(KeypairError::Yabai(e.to_string())),
       };
@@ -116,6 +111,14 @@ impl PartnerPKServiceTrait for PartnerPKService {
       &self,
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError> {
+      match self.repository.find_partner_keypairs(payload.partner_id).await {
+         Ok(_) => return Err(KeypairError::CreationError("keypair already exists".to_string())),
+         Err(v) => match v {
+            DBError::Yabaii(e) => return Err(KeypairError::Yabai(e)),
+            DBError::NotFound => ()
+         }
+      }
+
       let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
