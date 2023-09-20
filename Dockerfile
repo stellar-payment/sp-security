@@ -1,6 +1,10 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.70-slim-buster AS chef
 WORKDIR /app
 
+RUN apt-get update && \
+    apt-get install -y build-essential wget pkg-config libssl-dev clang libclang-dev lld && \
+    rm -rf /var/lib/apt/lists/*
+
 FROM chef as planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
@@ -10,9 +14,6 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
-RUN apt-get update && \
-    apt-get install -y build-essential wget pkg-config libssl-dev && \
-    rm -rf /var/lib/apt/lists/*
 
 ARG BUILD_TAG
 ARG BUILD_TIMESTAMP
