@@ -44,12 +44,7 @@ where
    if let Ok(body) = std::str::from_utf8(&bytes) {
       if !body.is_empty() {
          if body.len() > 2000 {
-            info!(
-               "{}: {} with body: {}...",
-               direction,
-               path,
-               &body[0..2000]
-            );
+            info!("{}: {} with body: {}...", direction, path, &body[0..2000]);
          } else {
             info!("{}: {} with body: {}", direction, path, body);
          }
