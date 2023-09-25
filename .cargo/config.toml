@@ -78,8 +78,21 @@ rustflags = [
     "-Wrust_2018_idioms",
 ]
 
+[profile.dev]
+opt-level=0
+lto="off"
+
 [profile.release]
 panic = "abort"
+opt-level=0
+lto="thin"
+incremental = false
+
+[profile.final]
+inherits="release"
+panic = "abort"
+opt-level=3
+lto=true
 incremental = false
 
 [target.x86_64-pc-windows-gnu]
