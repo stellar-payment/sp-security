@@ -1,10 +1,10 @@
 use std::collections::hash_map;
 
-use base64::{engine::general_purpose, Engine as _};
 use corelib::{security::{aes256_encrypt, ecdh_generate_secret, generate_shared_key, hmac512_hash, hmac512_verify, aes256_decrypt}, mapper};
 use p256::{elliptic_curve::generic_array::GenericArray, PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use aes::cipher::typenum::U32;
+use data_encoding::BASE64;
 
 use rand_core::{OsRng, RngCore};
 
@@ -77,8 +77,8 @@ pub struct ListMasterPKResponse {
 //    //  let pk = secret.public_key().to_sec1_bytes();
 //    //  let ppk = secret.to_bytes();
 
-//    //  let encoded_pk = general_purpose::STANDARD.encode(pk);
-//    //  let encoded_ppk = general_purpose::STANDARD.encode(ppk);
+//    //  let encoded_pk = BASE64.encode(pk);
+//    //  let encoded_ppk = BASE64.encode(ppk);
     
 //    //  println!("public_key: {}", encoded_pk);
 //    //  println!("secret_key: {}", encoded_ppk);
@@ -107,14 +107,14 @@ pub struct ListMasterPKResponse {
 //       .unwrap()
 //       .json::<ApiResponse<MasterPKResponse>>().await
 //       .unwrap();
-//    let master_pk = general_purpose::STANDARD.decode(mpk.data.unwrap().public_key).unwrap_or_else(|e| panic!("{e}"));
+//    let master_pk = BASE64.decode(mpk.data.unwrap().public_key).unwrap_or_else(|e| panic!("{e}"));
 
 //     // public key
-//    // let master_pk = general_purpose::STANDARD.decode("BHyX9xmySecQZ0Aizhk4ZxlQQKLv2K32FOj3StCuTAFJAVDsu1qpvivw5Nzg80qETLoSRHUpR931+QOQlhRKeCM=")
+//    // let master_pk = BASE64.decode("BHyX9xmySecQZ0Aizhk4ZxlQQKLv2K32FOj3StCuTAFJAVDsu1qpvivw5Nzg80qETLoSRHUpR931+QOQlhRKeCM=")
 //    //  .unwrap_or_else(|e| panic!("{e}"));
 
 //     // secret key
-//    let partner_pk = general_purpose::STANDARD.decode("2K/vz6mPlr3rlyDtu76LxJG5jMeDL7TsgzeTeoC5Ifo=")
+//    let partner_pk = BASE64.decode("2K/vz6mPlr3rlyDtu76LxJG5jMeDL7TsgzeTeoC5Ifo=")
 //     .unwrap_or_else(|e| panic!("{e}"));
 
 //    let secret_key = SecretKey::from_slice(&partner_pk).unwrap_or_else(|e| panic!("{e}"));
@@ -126,8 +126,8 @@ pub struct ListMasterPKResponse {
 //    let enc_key = &secret_key[0..32];
 //    let mac_key = &secret_key[32..64];
 
-//    println!("enc key: {} len: {}", general_purpose::STANDARD.encode(enc_key), enc_key.len());
-//    println!("mac key: {} len: {}", general_purpose::STANDARD.encode(mac_key), mac_key.len());
+//    println!("enc key: {} len: {}", BASE64.encode(enc_key), enc_key.len());
+//    println!("mac key: {} len: {}", BASE64.encode(mac_key), mac_key.len());
 
 //    let mut iv = [0u8; 16];
 //    OsRng.fill_bytes(&mut iv);
@@ -147,14 +147,14 @@ pub struct ListMasterPKResponse {
 //    let mac = hmac512_hash(mac_key, &ct)
 //    .unwrap_or_else(|e| panic!("{e}"));
 
-//    println!("tag: {}", general_purpose::STANDARD.encode(mac.clone()));
+//    println!("tag: {}", BASE64.encode(mac.clone()));
 //    let payload = DecryptDataPayload {
 //       data: format!(
 //          "{}.{}",
-//          general_purpose::STANDARD.encode(ct),
-//          general_purpose::STANDARD.encode(iv)
+//          BASE64.encode(ct),
+//          BASE64.encode(iv)
 //       ),
-//       tag: general_purpose::STANDARD.encode(mac),
+//       tag: BASE64.encode(mac),
 //       partner_id: 99,
 //       keypair_hash: mpk_hash.keypair_hash.clone()
 //    };
@@ -167,7 +167,7 @@ pub struct ListMasterPKResponse {
 //       .await
 //       .unwrap_or_else(|e| panic!("{e}"));
    
-//    let decrypted = general_purpose::STANDARD.decode(dec_res.json::<ApiResponse<DecryptDataResponse>>().await.unwrap().data.unwrap().data.as_bytes()).unwrap();
+//    let decrypted = BASE64.decode(dec_res.json::<ApiResponse<DecryptDataResponse>>().await.unwrap().data.unwrap().data.as_bytes()).unwrap();
 
 //    println!("{}", String::from_utf8_lossy(&decrypted));
 // //    reqwest::get("http://example.com");
@@ -179,8 +179,8 @@ async fn main() {
    //  let pk = secret.public_key().to_sec1_bytes();
    //  let ppk = secret.to_bytes();
 
-   //  let encoded_pk = general_purpose::STANDARD.encode(pk);
-   //  let encoded_ppk = general_purpose::STANDARD.encode(ppk);
+   //  let encoded_pk = BASE64.encode(pk);
+   //  let encoded_ppk = BASE64.encode(ppk);
     
    //  println!("public_key: {}", encoded_pk);
    //  println!("secret_key: {}", encoded_ppk);
@@ -206,7 +206,7 @@ async fn main() {
   }"#;
 
   let payload = EncryptDataPayload {
-      data: general_purpose::STANDARD.encode(msg.as_bytes()),
+      data: BASE64.encode(msg.as_bytes()),
       partner_id: 99,
    };
 
@@ -220,11 +220,11 @@ async fn main() {
    let encrypted = enc_res.json::<ApiResponse<EncryptDataResponse>>().await.unwrap().data.expect("failed");
    let (ct, iv) = encrypted.data.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
 
-   let master_pk = general_purpose::STANDARD.decode(encrypted.secret_key)
+   let master_pk = BASE64.decode(encrypted.secret_key.as_bytes())
       .unwrap_or_else(|e| panic!("{e}"));
 
     // secret key
-   let partner_pk = general_purpose::STANDARD.decode("2K/vz6mPlr3rlyDtu76LxJG5jMeDL7TsgzeTeoC5Ifo=")
+   let partner_pk = BASE64.decode("2K/vz6mPlr3rlyDtu76LxJG5jMeDL7TsgzeTeoC5Ifo=".as_bytes())
       .unwrap_or_else(|e| panic!("{e}"));
 
    let secret_key = SecretKey::from_slice(&partner_pk).unwrap_or_else(|e| panic!("{e}"));
@@ -236,15 +236,15 @@ async fn main() {
    let enc_key = &secret_key[0..32];
    let mac_key = &secret_key[32..64];
 
-   println!("enc key: {} len: {}", general_purpose::STANDARD.encode(enc_key), enc_key.len());
-   println!("mac key: {} len: {}", general_purpose::STANDARD.encode(mac_key), mac_key.len());
-   println!("pk key: {} len: {}", general_purpose::STANDARD.encode(master_pk), mac_key.len());
-   println!("sk key: {} len: {}", general_purpose::STANDARD.encode(partner_pk), mac_key.len());
+   println!("enc key: {} len: {}", BASE64.encode(enc_key), enc_key.len());
+   println!("mac key: {} len: {}", BASE64.encode(mac_key), mac_key.len());
+   println!("pk key: {} len: {}", BASE64.encode(&master_pk), mac_key.len());
+   println!("sk key: {} len: {}", BASE64.encode(&partner_pk), mac_key.len());
    
 
-   let ct = general_purpose::STANDARD.decode(ct).unwrap_or_else(|e| panic!("{e}"));
-   let enc_mac = general_purpose::STANDARD.decode(encrypted.tag).unwrap_or_else(|e| panic!("{e}"));
-   let iv = general_purpose::STANDARD.decode(iv).unwrap_or_else(|e| panic!("{e}"));
+   let ct = BASE64.decode(ct.as_bytes()).unwrap_or_else(|e| panic!("{e}"));
+   let enc_mac = BASE64.decode(encrypted.tag.as_bytes()).unwrap_or_else(|e| panic!("{e}"));
+   let iv = BASE64.decode(iv.as_bytes()).unwrap_or_else(|e| panic!("{e}"));
    
    let enc_key: GenericArray<u8, U32> = GenericArray::clone_from_slice(enc_key);
    hmac512_verify(mac_key, &ct, &enc_mac).unwrap_or_else(|e| panic!("{e}"));

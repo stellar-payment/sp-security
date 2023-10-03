@@ -1,7 +1,6 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use async_trait::async_trait;
-use base64::Engine;
 use p256::{SecretKey, PublicKey};
 use std::sync::Arc;
 
@@ -13,8 +12,8 @@ use crate::error::db_error::DBError;
 use crate::error::keypair_error::KeypairError;
 use corelib;
 use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
-use base64::engine::general_purpose;
 use rand_core::{OsRng, RngCore};
+use data_encoding::BASE64;
 
 #[derive(Clone)]
 pub struct MasterPKService {
@@ -51,7 +50,7 @@ impl MasterPKServiceTrait for MasterPKService {
          },
       };
 
-      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
 
       let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
@@ -61,25 +60,25 @@ impl MasterPKServiceTrait for MasterPKService {
          return Err(KeypairError::IntegrityCheckFailed("iv missmatch".to_string()));
       }
 
-      let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(|v| {
+      let pk_iv = BASE64.decode(encoded_pk_iv.as_bytes()).map(|v| {
          let mut buf = [0u8; 16];
          buf[..16].copy_from_slice(&v);
          buf
       }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      let pk_ct = general_purpose::STANDARD.decode(encoded_pk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_ct = BASE64.decode(encoded_pk.as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       
-      let ppk_iv = general_purpose::STANDARD.decode(encoded_ppk_iv).map(|v| {
+      let ppk_iv = BASE64.decode(encoded_ppk_iv.as_bytes()).map(|v| {
          let mut buf = [0u8; 16];
          buf[..16].copy_from_slice(&v);
          buf
       }).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      let ppk_ct = general_purpose::STANDARD.decode(encoded_ppk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let ppk_ct = BASE64.decode(encoded_ppk.as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let mut msg = pk_ct.clone();
       msg.extend(ppk_ct.clone());
       msg.extend_from_slice(&pk_iv);
 
-      let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_hash = BASE64.decode(meta.keypair_hash.clone().as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       corelib::security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
          .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
@@ -96,7 +95,7 @@ impl MasterPKServiceTrait for MasterPKService {
 
       Ok(MasterPKResponse {
          id: meta.id,
-         public_key: general_purpose::STANDARD.encode(pk),
+         public_key: BASE64.encode(&pk),
          keypair_hash: meta.keypair_hash,
       })
    }
@@ -124,15 +123,15 @@ impl MasterPKServiceTrait for MasterPKService {
       let mut iv = [0x24; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
       let enc_secret = corelib::security::aes256_encrypt(key, iv, &ppk.clone());
       let enc_pk = corelib::security::aes256_encrypt(key, iv, &pk);
 
-      let encoded_secret = general_purpose::STANDARD.encode(enc_secret.clone());
-      let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
-      let encoded_iv = general_purpose::STANDARD.encode(iv);
+      let encoded_secret = BASE64.encode(&enc_secret.clone());
+      let encoded_pk = BASE64.encode(&enc_pk.clone());
+      let encoded_iv = BASE64.encode(&iv);
 
       let mut msg = enc_pk.clone();
       msg.extend(enc_secret.clone());
@@ -144,7 +143,7 @@ impl MasterPKServiceTrait for MasterPKService {
          id: 0,
          public_key: format!("{}.{}", encoded_pk, encoded_iv),
          private_key: format!("{}.{}", encoded_secret, encoded_iv),
-         keypair_hash: general_purpose::STANDARD.encode(hashed),
+         keypair_hash: BASE64.encode(&hashed),
       };
 
       return match self.repository.insert_keypair(payload.clone()).await {

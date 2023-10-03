@@ -614,6 +614,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-encoding"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2e66c9d817f1720209181c316d28635c050fa304f9c79e47a520882661b7308"
+
+[[package]]
 name = "der"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1346,9 +1352,9 @@ name = "local-client"
 version = "0.1.0"
 dependencies = [
  "aes",
- "base64",
  "chrono",
  "corelib",
+ "data-encoding",
  "dotenv",
  "p256",
  "rand_core",
@@ -2224,11 +2230,11 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-extra",
- "base64",
  "bcrypt",
  "cbc",
  "chrono",
  "corelib",
+ "data-encoding",
  "dotenv",
  "hex",
  "hkdf",

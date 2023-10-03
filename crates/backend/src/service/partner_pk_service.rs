@@ -12,7 +12,7 @@ use crate::error::{db_error::DBError, keypair_error::KeypairError};
 use corelib::{security, mapper};
 use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
-use base64::{engine::general_purpose, Engine as _};
+use data_encoding::BASE64;
 
 #[derive(Clone)]
 pub struct PartnerPKService {
@@ -80,17 +80,17 @@ impl PartnerPKServiceTrait for PartnerPKService {
          return Err(KeypairError::NoAccess)
       }
 
-      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
       let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
 
-      let pk_iv = general_purpose::STANDARD.decode(encoded_pk_iv).map(mapper::vec_to_arr).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      let pk_ct = general_purpose::STANDARD.decode(encoded_pk).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_iv = BASE64.decode(encoded_pk_iv.as_bytes()).map(mapper::vec_to_arr).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_ct = BASE64.decode(encoded_pk.as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let mut msg = pk_ct.clone();
       msg.extend_from_slice(&pk_iv);
 
-      let pk_hash = general_purpose::STANDARD.decode(meta.keypair_hash.clone()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let pk_hash = BASE64.decode(meta.keypair_hash.clone().as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
          .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
@@ -102,7 +102,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
       Ok(PartnerPKResponse{
          id: meta.id,
          partner_id: meta.partner_id,
-         public_key: general_purpose::STANDARD.encode(pk),
+         public_key: BASE64.encode(&pk),
          keypair_hash: meta.keypair_hash,
       })
    }
@@ -119,17 +119,17 @@ impl PartnerPKServiceTrait for PartnerPKService {
          }
       }
 
-      let decoded_key = general_purpose::STANDARD.decode(get("DB_KEY")).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let public_key = general_purpose::STANDARD.decode(payload.public_key).map_err(|e| KeypairError::CreationError(e.to_string()))?;
+      let public_key = BASE64.decode(payload.public_key.as_bytes()).map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let enc_pk = security::aes256_encrypt(key, iv, &public_key);
-      let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
-      let encoded_iv = general_purpose::STANDARD.encode(iv);
+      let encoded_pk = BASE64.encode(&enc_pk.clone());
+      let encoded_iv = BASE64.encode(&iv);
       
       let mut msg = enc_pk.clone();
       msg.extend_from_slice(&iv);
@@ -140,7 +140,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
          id: 0,
          partner_id: payload.partner_id,
          public_key: format!("{}.{}", encoded_pk, encoded_iv),
-         keypair_hash: general_purpose::STANDARD.encode(hashed),
+         keypair_hash: BASE64.encode(&hashed),
       };
 
       return match self
@@ -166,8 +166,8 @@ impl PartnerPKServiceTrait for PartnerPKService {
 
       let enc_pk = security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
 
-      let encoded_pk = general_purpose::STANDARD.encode(enc_pk.clone());
-      let encoded_iv = general_purpose::STANDARD.encode(iv);
+      let encoded_pk = BASE64.encode(&enc_pk.clone());
+      let encoded_iv = BASE64.encode(&iv);
 
       let mut msg = enc_pk.clone();
       msg.extend_from_slice(&iv);
@@ -178,7 +178,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
          id: payload.id,
          partner_id: payload.partner_id,
          public_key: format!("{}.{}", encoded_pk, encoded_iv),
-         keypair_hash: general_purpose::STANDARD.encode(hashed),
+         keypair_hash: BASE64.encode(&hashed),
       };
 
       match self

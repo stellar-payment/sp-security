@@ -29,7 +29,7 @@ hmac = {version = "0.12.1", default-features = false}
 rand_core = {version = "0.6.4", default-features = false }
 hex = {version = "0.4.3", default-features = false }
 sha256 = {version = "1.2.2", default-features = false}
-base64 = {version = "0.21.2", default-features = false }
+data-encoding = {version = "2.4.0", default-features = false, features = ["alloc"]}
 structured-logger = {version = "1.0.2", default-features = false}
 log = {version ="0.4.19", default-features = false}
 axum-extra = {version = "0.8.0", default-features = false}
