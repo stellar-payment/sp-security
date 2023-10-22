@@ -96,7 +96,7 @@ lto=true
 incremental = false
 
 [target.x86_64-pc-windows-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "--cfg", "uuid_unstable"]
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld", "--cfg", "uuid_unstable"]

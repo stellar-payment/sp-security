@@ -4,7 +4,7 @@ use axum_extra::extract::WithRejection;
 use crate::dto::payload_sec::{DecryptDataPayload, DecryptDataResponse};
 use crate::dto::payload_sec::{EncryptDataPayload, EncryptDataResponse};
 use crate::response::api_response::ApiResponse;
-use crate::service::payload_sec_service::PayloadSecurityServiceTrait;
+use crate::service::payload_sec::PayloadSecurityServiceTrait;
 use crate::{error::api_error::ApiError, state::payload_sec_state::PayloadSecurityState};
 
 use axum::extract::State;

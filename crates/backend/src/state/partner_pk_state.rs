@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use crate::config::database::Database;
-use crate::service::partner_pk_service::{PartnerPKService, PartnerPKServiceTrait};
+use crate::service::partner_pk::{PartnerPKService, PartnerPKServiceTrait};
 
 #[derive(Clone)]
 pub struct PartnerPKState {

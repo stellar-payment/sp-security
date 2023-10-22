@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct MasterPKPayload {
-   pub id: u64,
+   pub id: String,
    pub hash: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MasterPKResponse {
-   pub id: u64,
+   pub id: String,
    pub public_key: String,
    pub keypair_hash: String,
 }

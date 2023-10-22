@@ -1,9 +1,13 @@
 use crate::config::database::{Database, DatabaseTrait};
 use crate::entity::security::MasterKeyPair;
+use crate::error;
 use crate::error::db_error::DBError;
 
 use async_trait::async_trait;
 use chrono::Utc;
+use log::info;
+use sqlx::Row;
+use uuid::Uuid;
 use std::sync::Arc;
 
 
@@ -17,11 +21,11 @@ pub trait MasterPKRepositoryTrait {
    fn new(conn: &Arc<Database>) -> Self;
 
    async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError>;
-   async fn find_keypair_by_id(&self, id: u64) -> Result<MasterKeyPair, DBError>;
+   async fn find_keypair_by_id(&self, id: Uuid) -> Result<MasterKeyPair, DBError>;
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError>;
-   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<u64, DBError>;
+   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<Uuid, DBError>;
    async fn update_keypair(&self, keypair: MasterKeyPair) -> Option<DBError>;
-   async fn delete_keypair(&self, id: u64) -> Option<DBError>;
+   async fn delete_keypair(&self, id: Uuid) -> Option<DBError>;
 }
 
 #[async_trait]
@@ -34,7 +38,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from tb_master_keypair
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs
       "#).fetch_all(self.db.get_pool()).await;
 
       match res {
@@ -43,11 +47,11 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       }
    }
 
-   async fn find_keypair_by_id(&self, id: u64) -> Result<MasterKeyPair, DBError> {
+   async fn find_keypair_by_id(&self, id: Uuid) -> Result<MasterKeyPair, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from tb_master_keypair 
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs 
          where
-            id = ?
+            id = $1
       "#).bind(id)
       .fetch_optional(self.db.get_pool())
       .await;
@@ -62,53 +66,50 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
    }
 
    async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError> {
-      let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from tb_master_keypair 
+      let res = sqlx::query_as::<_, MasterKeyPair>(r"
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs 
          where
-            keypair_hash = ?
-      "#).bind(hash)
+            keypair_hash = $1").bind(hash)
       .fetch_optional(self.db.get_pool())
       .await;
-   
+      
       match res {
          Ok(v) => match v {
-             Some(v) => Ok(v),
-             None => Err(DBError::NotFound)
+               Some(v) => Ok(v),
+               None => Err(DBError::NotFound)
          },
          Err(e) => Err(DBError::Yabaii(e.to_string()))
       }
    }
 
-   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<u64, DBError> {
+   async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<Uuid, DBError> {
       let current_time = Utc::now();
-
+      
       let res = sqlx::query(
-         "insert into tb_master_keypair(public_key, private_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
-      .bind(keypair.public_key)
+         "insert into master_keypairs(id, public_key, private_key, keypair_hash, created_at, updated_at) values ($1, $2, $3, $4, $5) returning id")
+         .bind(keypair.id)
+         .bind(keypair.public_key)
          .bind(keypair.private_key) 
          .bind(keypair.keypair_hash) 
          .bind(current_time) 
          .bind(current_time)
-      .execute(self.db.get_pool())
-      .await;
+      .fetch_one(self.db.get_pool())
+      .await.map_err(|e| DBError::Yabaii(e.to_string()))?;
    
-      match res {
-         Ok(v) => Ok(v.last_insert_id()),
-         Err(e) => Err(DBError::Yabaii(e.to_string()))
-      }
+      Ok(res.get::<Uuid, _>(0))
    }
 
    async fn update_keypair(&self, keypair: MasterKeyPair) -> Option<DBError> {
       let current_time = Utc::now();
 
       let res = sqlx::query(
-         "update tb_master_keypair set 
-            public_key = ?, 
-            private_key = ?, 
-            keypair_hash = ?,  
-            updated_at = ?
+         "update master_keypairs set 
+            public_key = $1, 
+            private_key = $2, 
+            keypair_hash = $3,  
+            updated_at = $4
          where 
-            id = ?
+            id = $5
          ")
       .bind(keypair.public_key)
          .bind(keypair.private_key) 
@@ -125,8 +126,8 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    }
    
-   async fn delete_keypair(&self, id: u64) -> Option<DBError> {
-      let res = sqlx::query("delete from tb_master_keypair where id = ?")
+   async fn delete_keypair(&self, id: Uuid) -> Option<DBError> {
+      let res = sqlx::query("delete from master_keypairs where id = $1")
       .bind(id)
       .execute(self.db.get_pool())
       .await;

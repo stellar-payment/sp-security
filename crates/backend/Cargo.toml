@@ -19,7 +19,7 @@ thiserror = "1.0.40"
 chrono = {version = "0.4.24", features=["serde"], default-features = false }
 bcrypt = { default-features = false, version = "0.15.0" }
 serde_json = { default-features = false, version = "1.0.95" }
-sqlx = { version = "0.7.1", features = ["chrono", "macros", "mysql", "runtime-tokio"] }
+sqlx = { version = "0.7.2", features = ["chrono", "macros", "postgres", "uuid", "runtime-tokio"] }
 async-trait = "0.1.68"
 sqlx-cli = { default-features = false, version = "0.7.1" }
 p256 = {version = "0.13.2", features = ["std", "arithmetic", "ecdh"], default-features = false }
@@ -35,3 +35,4 @@ log = {version ="0.4.19", default-features = false}
 axum-extra = {version = "0.8.0", default-features = false}
 sha2 = {version = "0.10.7", default-features = false}
 hkdf = {version = "0.12.3", default-features = false}
+uuid = {version = "1.5.0", features= ["serde", "v7", "fast-rng"]}

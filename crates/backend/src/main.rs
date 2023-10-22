@@ -56,10 +56,11 @@ async fn main() {
       .unwrap_or_else(|e| panic!("database error: {}", e));
 
    let host = format!("0.0.0.0:{}", parameter::get("PORT"));
+   info!("listening on {}", host);
    match axum::Server::bind(&host.parse().unwrap())
       .serve(routes::root::routes(Arc::new(conn)))
       .await {
-         Ok(_) => info!("listening on {}", host),
+         Ok(_) => (),
          Err(e) =>  error!("failed to connect error: {}", e)
       }
 }

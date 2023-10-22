@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Clone, Deserialize, Serialize, sqlx::FromRow)]
 pub struct PartnerKeyPair {
-   pub id: u64,
-   pub partner_id: u64,
+   pub id: Uuid,
+   pub partner_id: Uuid,
    pub public_key: String,
    pub keypair_hash: String,
    // pub created_at: DateTime<Utc>,
@@ -12,7 +13,7 @@ pub struct PartnerKeyPair {
 
 #[derive(Clone, Deserialize, Serialize, sqlx::FromRow)]
 pub struct MasterKeyPair {
-   pub id: u64,
+   pub id: Uuid,
    pub public_key: String,
    pub private_key: String,
    pub keypair_hash: String,

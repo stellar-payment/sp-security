@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::service::payload_sec_service::{PayloadSecurityService, PayloadSecurityServiceTrait};
+use crate::service::payload_sec::{PayloadSecurityService, PayloadSecurityServiceTrait};
 use crate::config::database::Database;
 
 #[derive(Clone)]

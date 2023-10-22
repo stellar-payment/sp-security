@@ -1,7 +1,9 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use async_trait::async_trait;
+use log::info;
 use p256::{SecretKey, PublicKey};
+use uuid::Uuid;
 use std::sync::Arc;
 
 use crate::config::database::Database;
@@ -42,6 +44,7 @@ impl MasterPKServiceTrait for MasterPKService {
       if hash.is_empty() {
          return Err(KeypairError::Invalid);
       };
+
       let meta = match self.repository.find_keypair_by_hash(hash).await {
          Ok(v) => v,
          Err(e) => match e {
@@ -50,7 +53,7 @@ impl MasterPKServiceTrait for MasterPKService {
          },
       };
 
-      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(format!("failed to decode key: {e}")))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
 
       let (encoded_pk, encoded_pk_iv) = meta.public_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
@@ -94,7 +97,7 @@ impl MasterPKServiceTrait for MasterPKService {
       let _ = PublicKey::from_sec1_bytes(&pk).map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
       Ok(MasterPKResponse {
-         id: meta.id,
+         id: meta.id.to_string(),
          public_key: BASE64.encode(&pk),
          keypair_hash: meta.keypair_hash,
       })
@@ -106,7 +109,7 @@ impl MasterPKServiceTrait for MasterPKService {
             keys: v
                .into_iter()
                .map(|kp| MasterPKResponse {
-                  id: kp.id,
+                  id: kp.id.to_string(),
                   public_key: kp.public_key,
                   keypair_hash: kp.keypair_hash,
                })
@@ -140,7 +143,7 @@ impl MasterPKServiceTrait for MasterPKService {
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = MasterKeyPair {
-         id: 0,
+         id: Uuid::now_v7(),
          public_key: format!("{}.{}", encoded_pk, encoded_iv),
          private_key: format!("{}.{}", encoded_secret, encoded_iv),
          keypair_hash: BASE64.encode(&hashed),
@@ -148,7 +151,7 @@ impl MasterPKServiceTrait for MasterPKService {
 
       return match self.repository.insert_keypair(payload.clone()).await {
          Ok(v) => Ok(MasterPKResponse {
-            id: v,
+            id: v.to_string(),
             public_key: payload.public_key,
             keypair_hash: payload.keypair_hash,
          }),

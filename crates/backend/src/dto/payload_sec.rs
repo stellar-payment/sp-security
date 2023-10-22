@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EncryptDataPayload {
     pub data: String,
-    pub partner_id: u64,
+    pub partner_id: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -16,7 +16,7 @@ pub struct EncryptDataResponse {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DecryptDataPayload {
     pub keypair_hash: String,
-    pub partner_id: u64,
+    pub partner_id: String,
     pub data: String,
     pub tag: String
 }

@@ -1,3 +1,3 @@
-pub mod payload_sec_service;
-pub mod master_pk_service;
-pub mod partner_pk_service;
+pub mod payload_sec;
+pub mod master_pk;
+pub mod partner_pk;

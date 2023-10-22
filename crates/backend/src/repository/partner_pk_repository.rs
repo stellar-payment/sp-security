@@ -5,7 +5,9 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
+use sqlx::Row;
 use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct PartnerPKRepository {
@@ -16,12 +18,12 @@ pub struct PartnerPKRepository {
 pub trait PartnerPKRepositoryTrait {
    fn new(conn: &Arc<Database>) -> Self;
 
-   async fn find_partner_keypairs(&self, partner_id: u64) -> Result<PartnerKeyPair, DBError>;
-   async fn find_partner_keypair_by_id(&self, id: u64) -> Result<PartnerKeyPair, DBError>;
+   async fn find_partner_keypairs(&self, partner_id: Uuid) -> Result<PartnerKeyPair, DBError>;
+   async fn find_partner_keypair_by_id(&self, id: Uuid) -> Result<PartnerKeyPair, DBError>;
    async fn find_partner_keypair_by_hash(&self, hash: String) -> Result<PartnerKeyPair, DBError>;
-   async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<u64, DBError>;
+   async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<Uuid, DBError>;
    async fn update_partner_keypair(&self, keypair: PartnerKeyPair) -> Option<DBError>;
-   async fn delete_partner_keypair(&self, id: String) -> Option<DBError>;
+   async fn delete_partner_keypair(&self, hash: String) -> Option<DBError>;
 }
 
 #[async_trait]
@@ -32,11 +34,11 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       }
    }
 
-   async fn find_partner_keypairs(&self, partner_id: u64) -> Result<PartnerKeyPair, DBError> {
+   async fn find_partner_keypairs(&self, partner_id: Uuid) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
-         select id, partner_id, public_key, keypair_hash from tb_partner_keypair
-         where partner_id = ?
+         select id, partner_id, public_key, keypair_hash from partner_keypairs
+         where partner_id = $1
       "#,
       )
       .bind(partner_id)
@@ -52,11 +54,11 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       }
    }
 
-   async fn find_partner_keypair_by_id(&self, id: u64) -> Result<PartnerKeyPair, DBError> {
+   async fn find_partner_keypair_by_id(&self, id: Uuid) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
-      select id, partner_id, public_key, keypair_hash from tb_partner_keypair
-      where id = ?
+      select id, partner_id, public_key, keypair_hash from partner_keypairs
+      where id = $1
    "#,
       )
       .bind(id)
@@ -75,8 +77,8 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    async fn find_partner_keypair_by_hash(&self, hash: String) -> Result<PartnerKeyPair, DBError> {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
-      select id, partner_id, public_key, keypair_hash from tb_partner_keypair
-      where keypair_hash = ?
+      select id, partner_id, public_key, keypair_hash from partner_keypairs
+      where keypair_hash = $1
    "#,
       )
       .bind(hash)
@@ -92,22 +94,20 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       }
    }
 
-   async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<u64, DBError> {
+   async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<Uuid, DBError> {
       let current_time = Utc::now();
 
-      let res = sqlx::query("insert into tb_partner_keypair(partner_id, public_key, keypair_hash, created_at, updated_at) values (?, ?, ?, ?, ?)")
+      let res = sqlx::query("insert into partner_keypairs(id, partner_id, public_key, keypair_hash, created_at, updated_at) values ($1, $2, $3, $4, $5)")
+      .bind(keypair.id)
       .bind(keypair.partner_id)
       .bind(keypair.public_key)
       .bind(keypair.keypair_hash)
       .bind(current_time)
       .bind(current_time)
-      .execute(self.db.get_pool())
-      .await;
+      .fetch_one(self.db.get_pool())
+      .await.map_err(|e| DBError::Yabaii(e.to_string()))?;
 
-      match res {
-         Ok(v) => Ok(v.last_insert_id()),
-         Err(e) => Err(DBError::Yabaii(e.to_string())),
-      }
+      Ok(res.get::<Uuid, _>(0))
    }
 
    async fn update_partner_keypair(&self, keypair: PartnerKeyPair) -> Option<DBError> {
@@ -115,12 +115,12 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
 
       let res = sqlx::query(
          r#"
-         update tb_partner_keypair set
-            public_key = ?,
-            keypair_hash = ?,
-            updated_at = ?
+         update partner_keypairs set
+            public_key = $1,
+            keypair_hash = $2,
+            updated_at = $3
          where
-            id = ? and partner_id = ?
+            id = $4 and partner_id = $5
       "#,
       )
       .bind(keypair.public_key)
@@ -138,7 +138,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    }
 
    async fn delete_partner_keypair(&self, hash: String) -> Option<DBError> {
-      let res = sqlx::query(r#"delete from tb_partner_keypair where keypair_hash = ?"#)
+      let res = sqlx::query(r#"delete from partner_keypairs where keypair_hash = $1"#)
          .bind(hash)
          .execute(self.db.get_pool())
          .await;

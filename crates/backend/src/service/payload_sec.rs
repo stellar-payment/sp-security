@@ -8,6 +8,7 @@ use corelib::security::aes256_decrypt;
 use corelib::{security, mapper};
 use p256::{PublicKey, SecretKey};
 use rand_core::{OsRng, RngCore};
+use uuid::Uuid;
 
 use crate::config::database::Database;
 use crate::config::parameter::get;
@@ -56,10 +57,10 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
 
       let partner_data = self
          .partner_repository
-         .find_partner_keypairs(payload.partner_id)
+         .find_partner_keypairs(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")))
          .await.map_err(|e| SecurityError::GenericError(e.to_string()))?;
       
-      let master_data = self.master_repository.find_keypair_by_id(9)
+      let master_data = self.master_repository.find_keypair_by_id(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")))
          .await.map_err(|e| SecurityError::GenericError(e.to_string()))?;
 
       let (encoded_secret_key, encoded_iv_sk) = master_data.private_key.split_once('.').unwrap_or_else(|| panic!("invalid structure"));
@@ -130,7 +131,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
 
       let partner_data = match self
          .partner_repository
-         .find_partner_keypairs(payload.partner_id)
+         .find_partner_keypairs(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")))
          .await
       {
          Ok(v) => v,

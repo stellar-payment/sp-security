@@ -1,7 +1,7 @@
 use crate::dto::master_keypair::{ListMasterPKResponse, MasterPKResponse};
 use crate::error::api_error::ApiError;
 use crate::response::api_response::ApiResponse;
-use crate::service::master_pk_service::MasterPKServiceTrait;
+use crate::service::master_pk::MasterPKServiceTrait;
 use crate::state::master_pk_state::MasterPKState;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;

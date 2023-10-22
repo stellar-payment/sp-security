@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::config::database::Database;
 // use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
-use crate::service::master_pk_service::{MasterPKService, MasterPKServiceTrait};
+use crate::service::master_pk::{MasterPKService, MasterPKServiceTrait};
 
 #[derive(Clone)]
 pub struct MasterPKState {
