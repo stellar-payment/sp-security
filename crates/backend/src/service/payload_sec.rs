@@ -15,8 +15,8 @@ use crate::config::parameter::get;
 use crate::dto::payload_sec::{DecryptDataPayload, DecryptDataResponse};
 use crate::dto::payload_sec::{EncryptDataPayload, EncryptDataResponse};
 use crate::error::security_error::SecurityError;
-use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
-use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
+use crate::repository::master_pk::{MasterPKRepository, MasterPKRepositoryTrait};
+use crate::repository::partner_pk::{PartnerPKRepository, PartnerPKRepositoryTrait};
 
 
 #[derive(Clone)]

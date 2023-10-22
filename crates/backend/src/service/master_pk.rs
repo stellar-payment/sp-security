@@ -13,7 +13,7 @@ use crate::entity::security::MasterKeyPair;
 use crate::error::db_error::DBError;
 use crate::error::keypair_error::KeypairError;
 use corelib;
-use crate::repository::master_pk_repository::{MasterPKRepository, MasterPKRepositoryTrait};
+use crate::repository::master_pk::{MasterPKRepository, MasterPKRepositoryTrait};
 use rand_core::{OsRng, RngCore};
 use data_encoding::BASE64;
 

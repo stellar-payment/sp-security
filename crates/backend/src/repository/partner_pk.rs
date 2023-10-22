@@ -39,6 +39,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
          r#"
          select id, partner_id, public_key, keypair_hash from partner_keypairs
          where partner_id = $1
+         and deleted_at is null
       "#,
       )
       .bind(partner_id)
@@ -58,7 +59,7 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
       select id, partner_id, public_key, keypair_hash from partner_keypairs
-      where id = $1
+      where id = $1 and deleted_at is null
    "#,
       )
       .bind(id)
@@ -78,8 +79,8 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
       select id, partner_id, public_key, keypair_hash from partner_keypairs
-      where keypair_hash = $1
-   "#,
+      where keypair_hash = $1 and deleted_at is null
+   "#, 
       )
       .bind(hash)
       .fetch_optional(self.db.get_pool())
@@ -120,7 +121,8 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
             keypair_hash = $2,
             updated_at = $3
          where
-            id = $4 and partner_id = $5
+            id = $4 and partner_id = $5 
+            and deleted_at is null
       "#,
       )
       .bind(keypair.public_key)
@@ -138,7 +140,11 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    }
 
    async fn delete_partner_keypair(&self, hash: String) -> Option<DBError> {
-      let res = sqlx::query(r#"delete from partner_keypairs where keypair_hash = $1"#)
+      let res = sqlx::query(r#"
+      update partner_keypairs set
+         updated_at = $1,
+         deleted_at = $1,
+      where keypair_hash = $2 and deleted_at is null"#)
          .bind(hash)
          .execute(self.db.get_pool())
          .await;

@@ -10,7 +10,7 @@ use crate::config::parameter::get;
 use crate::dto::partner_keypair::{PartnerPKPayload, PartnerPKResponse};
 use crate::entity::security::PartnerKeyPair;
 use crate::error::{db_error::DBError, keypair_error::KeypairError};
-use crate::repository::partner_pk_repository::{PartnerPKRepository, PartnerPKRepositoryTrait};
+use crate::repository::partner_pk::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
 use corelib::{mapper, security};
 use data_encoding::BASE64;

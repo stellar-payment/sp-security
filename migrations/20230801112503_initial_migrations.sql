@@ -7,7 +7,7 @@ create table partners (
     pic_name varchar(255) not null,
     pic_email varchar(255) not null,
     pic_phone varchar(30) not null,
-    partner_secret char(64) not null,
+    partner_secret text not null,
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
     deleted_at timestamp with time zone

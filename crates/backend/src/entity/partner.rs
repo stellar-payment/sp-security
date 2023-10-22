@@ -6,6 +6,7 @@ pub struct Partner {
    pub id: Uuid,
    pub name: String, 
    pub address: String, 
+   pub phone: String,
    pub email: String, 
    pub pic_name: String,
    pub pic_email: String,

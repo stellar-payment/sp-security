@@ -38,7 +38,9 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs
+         select id, public_key, private_key, keypair_hash, created_at, updated_at 
+         from master_keypairs
+         where deleted_at is null 
       "#).fetch_all(self.db.get_pool()).await;
 
       match res {
@@ -51,7 +53,8 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
          select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs 
          where
-            id = $1
+            id = $1 and
+            deleted_at is null
       "#).bind(id)
       .fetch_optional(self.db.get_pool())
       .await;
@@ -69,7 +72,8 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
       let res = sqlx::query_as::<_, MasterKeyPair>(r"
          select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs 
          where
-            keypair_hash = $1").bind(hash)
+            keypair_hash = $1 and
+            deleted_at is null").bind(hash)
       .fetch_optional(self.db.get_pool())
       .await;
       
@@ -109,7 +113,8 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
             keypair_hash = $3,  
             updated_at = $4
          where 
-            id = $5
+            id = $5 and
+            deleted_at is null
          ")
       .bind(keypair.public_key)
          .bind(keypair.private_key) 
@@ -127,7 +132,15 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
    }
    
    async fn delete_keypair(&self, id: Uuid) -> Option<DBError> {
-      let res = sqlx::query("delete from master_keypairs where id = $1")
+      let res = sqlx::query(
+         "update master_keypairs set 
+            updated_at = $1,
+            deleted_at = $1
+         where 
+            id = $1 and
+            deleted_at is null
+         ")
+      .bind(Utc::now())
       .bind(id)
       .execute(self.db.get_pool())
       .await;
