@@ -1,7 +1,7 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use async_trait::async_trait;
-use log::info;
+
 use p256::{SecretKey, PublicKey};
 use uuid::Uuid;
 use std::sync::Arc;

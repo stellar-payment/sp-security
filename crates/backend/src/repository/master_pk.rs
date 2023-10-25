@@ -1,11 +1,11 @@
 use crate::config::database::{Database, DatabaseTrait};
 use crate::entity::security::MasterKeyPair;
-use crate::error;
+
 use crate::error::db_error::DBError;
 
 use async_trait::async_trait;
 use chrono::Utc;
-use log::info;
+
 use sqlx::Row;
 use uuid::Uuid;
 use std::sync::Arc;
