@@ -37,7 +37,7 @@ impl PartnerRepositoryTrait for PartnerRepository {
 
    async fn find_partners(&self) -> Result<Vec<Partner>, DBError> {
       let res = sqlx::query_as::<_, Partner>(r#"
-            select id, name, address, phone, email, pic_name, pic_email, pic_phone, partner_secret from partners where deleted_at is null
+            select id, name, address, phone, email, pic_name, pic_email, pic_phone, partner_secret, row_hash from partners where deleted_at is null
         "#).fetch_all(self.db.get_pool()).await;
 
       match res {
@@ -48,7 +48,7 @@ impl PartnerRepositoryTrait for PartnerRepository {
 
    async fn find_partner_by_id(&self, id: Uuid) -> Result<Partner, DBError> {
       let res = sqlx::query_as::<_, Partner>(r#"
-            select id, name, address, phone, email, pic_name, pic_email, pic_phone, partner_secret from partners
+            select id, name, address, phone, email, pic_name, pic_email, pic_phone, partner_secret, row_hash from partners
             where id = $1
             and deleted_at is null
         "#).bind(id).fetch_optional(self.db.get_pool()).await;
@@ -65,8 +65,8 @@ impl PartnerRepositoryTrait for PartnerRepository {
    async fn insert_partner(&self, data: Partner) -> Result<Uuid, DBError> {
       let res = sqlx::query(
          r#"
-            insert into partners(id, name, address, phone, email, pic_name, pic_phone, pic_email, partner_secret) 
-            values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id
+            insert into partners(id, name, address, phone, email, pic_name, pic_phone, pic_email, partner_secret, row_hash) 
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id
         "#,
       )
       .bind(data.id)
@@ -78,6 +78,7 @@ impl PartnerRepositoryTrait for PartnerRepository {
       .bind(data.pic_phone)
       .bind(data.pic_email)
       .bind(data.partner_secret)
+      .bind(data.row_hash)
       .fetch_one(self.db.get_pool())
       .await
       .map_err(|e| DBError::Yabaii(e.to_string()))?;
@@ -98,8 +99,9 @@ impl PartnerRepositoryTrait for PartnerRepository {
                 pic_name = $6,
                 pic_email = $7, 
                 partner_secret = $8,
-                updated_at = $9
-            where id = $10
+                row_hash = $9,
+                updated_at = $10
+            where id = $11
             and deleted_at is null",
       )
       .bind(data.name)
@@ -110,6 +112,7 @@ impl PartnerRepositoryTrait for PartnerRepository {
       .bind(data.pic_phone)
       .bind(data.pic_email)
       .bind(data.partner_secret)
+      .bind(data.row_hash)
       .bind(curr_time)
       .bind(data.id)
       .execute(self.db.get_pool())

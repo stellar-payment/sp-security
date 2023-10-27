@@ -141,7 +141,7 @@ async fn main() {
 
 
    let enc_key: GenericArray<u8, U32> = GenericArray::clone_from_slice(enc_key);
-   let ct = aes256_encrypt(enc_key, iv, msg.as_bytes());
+   let ct = aes256_encrypt(enc_key, msg.as_bytes());
    let mac = hmac512_hash(mac_key, &ct)
    .unwrap_or_else(|e| panic!("{e}"));
 

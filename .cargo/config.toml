@@ -73,6 +73,7 @@ rustflags = [
     "-Wclippy::useless_transmute",
     "-Wclippy::verbose_file_reads",
     "-Wclippy::zero_sized_map_values",
+    "-Aclippy::redundant_field_names",
     "-Wfuture_incompatible",
     "-Wnonstandard_style",
     "-Wrust_2018_idioms",

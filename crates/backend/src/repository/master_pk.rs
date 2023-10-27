@@ -22,7 +22,7 @@ pub trait MasterPKRepositoryTrait {
 
    async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError>;
    async fn find_keypair_by_id(&self, id: Uuid) -> Result<MasterKeyPair, DBError>;
-   async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError>;
+   async fn find_keypair_by_hash(&self, hash: Vec<u8>) -> Result<MasterKeyPair, DBError>;
    async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<Uuid, DBError>;
    async fn update_keypair(&self, keypair: MasterKeyPair) -> Option<DBError>;
    async fn delete_keypair(&self, id: Uuid) -> Option<DBError>;
@@ -38,8 +38,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
 
    async fn find_keypairs(&self) -> Result<Vec<MasterKeyPair>, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r#"
-         select id, public_key, private_key, keypair_hash, created_at, updated_at 
-         from master_keypairs
+         select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs
          where deleted_at is null 
       "#).fetch_all(self.db.get_pool()).await;
 
@@ -68,7 +67,7 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
      }
    }
 
-   async fn find_keypair_by_hash(&self, hash: String) -> Result<MasterKeyPair, DBError> {
+   async fn find_keypair_by_hash(&self, hash: Vec<u8>) -> Result<MasterKeyPair, DBError> {
       let res = sqlx::query_as::<_, MasterKeyPair>(r"
          select id, public_key, private_key, keypair_hash, created_at, updated_at from master_keypairs 
          where
@@ -87,16 +86,12 @@ impl MasterPKRepositoryTrait for MasterPKRepository {
    }
 
    async fn insert_keypair(&self, keypair: MasterKeyPair) -> Result<Uuid, DBError> {
-      let current_time = Utc::now();
-      
       let res = sqlx::query(
-         "insert into master_keypairs(id, public_key, private_key, keypair_hash, created_at, updated_at) values ($1, $2, $3, $4, $5) returning id")
+         "insert into master_keypairs(id, public_key, private_key, keypair_hash) values ($1, $2, $3, $4) returning id")
          .bind(keypair.id)
          .bind(keypair.public_key)
          .bind(keypair.private_key) 
          .bind(keypair.keypair_hash) 
-         .bind(current_time) 
-         .bind(current_time)
       .fetch_one(self.db.get_pool())
       .await.map_err(|e| DBError::Yabaii(e.to_string()))?;
    

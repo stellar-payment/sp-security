@@ -14,3 +14,4 @@ sha2 = {version = "0.10.7", default-features = false}
 hkdf = {version = "0.12.3", default-features = false}
 thiserror = "1.0.40"
 axum = { version = "0.6.3", features = ["json", "tokio"] }
+rand_core = {version = "0.6.4", default-features = false }

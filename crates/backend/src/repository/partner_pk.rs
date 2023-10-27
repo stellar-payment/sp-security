@@ -96,15 +96,11 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    }
 
    async fn insert_partner_keypair(&self, keypair: PartnerKeyPair) -> Result<Uuid, DBError> {
-      let current_time = Utc::now();
-
-      let res = sqlx::query("insert into partner_keypairs(id, partner_id, public_key, keypair_hash, created_at, updated_at) values ($1, $2, $3, $4, $5)")
+      let res = sqlx::query("insert into partner_keypairs(id, partner_id, public_key, keypair_hash) values ($1, $2, $3, $4) returning id")
       .bind(keypair.id)
       .bind(keypair.partner_id)
       .bind(keypair.public_key)
       .bind(keypair.keypair_hash)
-      .bind(current_time)
-      .bind(current_time)
       .fetch_one(self.db.get_pool())
       .await.map_err(|e| DBError::Yabaii(e.to_string()))?;
 

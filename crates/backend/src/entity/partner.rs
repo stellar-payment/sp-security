@@ -8,8 +8,9 @@ pub struct Partner {
    pub address: String, 
    pub phone: String,
    pub email: String, 
-   pub pic_name: String,
-   pub pic_email: String,
-   pub pic_phone: String,
-   pub partner_secret: String,
+   pub pic_name: Vec<u8>,
+   pub pic_email: Vec<u8>,
+   pub pic_phone: Vec<u8>,
+   pub partner_secret: Vec<u8>,
+   pub row_hash: Vec<u8>,
 }

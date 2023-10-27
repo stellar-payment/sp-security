@@ -1,6 +1,5 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
-use p256::PublicKey;
 use rand_core::{OsRng, RngCore};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -12,7 +11,7 @@ use crate::entity::security::PartnerKeyPair;
 use crate::error::{db_error::DBError, keypair_error::KeypairError};
 use crate::repository::partner_pk::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
-use corelib::{mapper, security};
+use corelib::security;
 use data_encoding::BASE64;
 
 #[derive(Clone)]
@@ -47,19 +46,27 @@ impl PartnerPKServiceTrait for PartnerPKService {
    }
 
    async fn get_keypairs(&self, partner_id: String) -> Result<PartnerPKResponse, KeypairError> {
-      return match self
-         .repository
-         .find_partner_keypairs(Uuid::parse_str(&partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")))
-         .await
-      {
-         Ok(v) => Ok(PartnerPKResponse {
-            id: v.id.to_string(),
-            partner_id: v.partner_id.to_string(),
-            public_key: v.public_key,
-            keypair_hash: v.keypair_hash,
-         }),
-         Err(e) => Err(KeypairError::Yabai(e.to_string())),
+      let meta = match self.repository.find_partner_keypairs(Uuid::parse_str(&partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}"))).await {
+         Ok(v) => v,
+         Err(e) => return Err(KeypairError::Yabai(e.to_string())),
       };
+
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(format!("failed to decode key: {e}")))?;
+      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
+
+      corelib::security::hmac256_verify(get("HASH_KEY").as_bytes(), &meta.public_key, &meta.keypair_hash)
+         .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
+      
+      let pk = corelib::security::aes256_decrypt(key, &meta.public_key)
+         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
+      Ok(PartnerPKResponse{
+         id: meta.id.into(),
+         partner_id: meta.partner_id.into(),
+         public_key: BASE64.encode(&pk),
+         keypair_hash: BASE64.encode(&meta.keypair_hash),
+      })
+
    }
 
    async fn get_keypair_by_hash(
@@ -72,55 +79,30 @@ impl PartnerPKServiceTrait for PartnerPKService {
       };
 
       let meta = match self.repository.find_partner_keypair_by_hash(hash).await {
-         Ok(v) => PartnerPKResponse {
-            id: v.id.to_string(),
-            partner_id: v.partner_id.to_string(),
-            public_key: v.public_key,
-            keypair_hash: v.keypair_hash,
-         },
+         Ok(v) => v,
          Err(_) => return Err(KeypairError::NotFound),
       };
 
-      if meta.partner_id != partner_id {
+      if meta.partner_id.to_string() != partner_id {
          return Err(KeypairError::NoAccess);
       }
 
-      let decoded_key = BASE64
-         .decode(get("DB_KEY").as_bytes())
+      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes())
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
-      let (encoded_pk, encoded_pk_iv) = meta
-         .public_key
-         .split_once('.')
-         .unwrap_or_else(|| panic!("invalid structure"));
-
-      let pk_iv = BASE64
-         .decode(encoded_pk_iv.as_bytes())
-         .map(mapper::vec_to_arr)
-         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      let pk_ct = BASE64
-         .decode(encoded_pk.as_bytes())
-         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
-
-      let mut msg = pk_ct.clone();
-      msg.extend_from_slice(&pk_iv);
-
-      let pk_hash = BASE64
-         .decode(meta.keypair_hash.clone().as_bytes())
-         .map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      security::hmac256_verify(get("HASH_KEY").as_bytes(), &msg, &pk_hash)
+   
+      security::hmac256_verify(get("HASH_KEY").as_bytes(), &meta.public_key, &meta.keypair_hash)
          .map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;
 
-      let pk = security::aes256_decrypt(key, pk_iv, &pk_ct)
+      let pk = security::aes256_decrypt(key, &meta.public_key)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
-      let _ = PublicKey::from_sec1_bytes(&pk).unwrap();
 
       Ok(PartnerPKResponse {
-         id: meta.id,
-         partner_id: meta.partner_id,
+         id: meta.id.into(),
+         partner_id: meta.partner_id.into(),
          public_key: BASE64.encode(&pk),
-         keypair_hash: meta.keypair_hash,
+         keypair_hash: BASE64.encode(&meta.keypair_hash),
       })
    }
 
@@ -128,16 +110,8 @@ impl PartnerPKServiceTrait for PartnerPKService {
       &self,
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError> {
-      match self
-         .repository
-         .find_partner_keypairs(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")))
-         .await
-      {
-         Ok(_) => {
-            return Err(KeypairError::CreationError(
-               "keypair already exists".to_string(),
-            ))
-         }
+      match self.repository.find_partner_keypairs(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}"))).await {
+         Ok(_) => return Err(KeypairError::CreationError("keypair already exists".to_string())),
          Err(v) => match v {
             DBError::Yabaii(e) => return Err(KeypairError::Yabai(e)),
             DBError::NotFound => (),
@@ -152,24 +126,19 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let public_key = BASE64
-         .decode(payload.public_key.as_bytes())
+      let public_key = BASE64.decode(payload.public_key.as_bytes())
          .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
-      let enc_pk = security::aes256_encrypt(key, iv, &public_key);
-      let encoded_pk = BASE64.encode(&enc_pk.clone());
-      let encoded_iv = BASE64.encode(&iv);
+      let enc_pk = security::aes256_encrypt(key, &public_key);
 
-      let mut msg = enc_pk.clone();
-      msg.extend_from_slice(&iv);
-      let hashed = security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = security::hmac256_hash(get("HASH_KEY").as_bytes(), &enc_pk)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {
          id: Uuid::now_v7(),
          partner_id: Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")),
-         public_key: format!("{}.{}", encoded_pk, encoded_iv),
-         keypair_hash: BASE64.encode(&hashed),
+         public_key: enc_pk,
+         keypair_hash: hashed,
       };
 
       return match self
@@ -180,8 +149,8 @@ impl PartnerPKServiceTrait for PartnerPKService {
          Ok(v) => Ok(PartnerPKResponse {
             id: v.to_string(),
             partner_id: payload.partner_id.to_string(),
-            public_key: payload.public_key,
-            keypair_hash: payload.keypair_hash,
+            public_key: BASE64.encode(&payload.public_key),
+            keypair_hash: BASE64.encode(&payload.keypair_hash),
          }),
          Err(e) => Err(KeypairError::CreationError(e.to_string())),
       };
@@ -190,42 +159,29 @@ impl PartnerPKServiceTrait for PartnerPKService {
    async fn update_keypair(&self, payload: PartnerPKPayload) -> Result<(), KeypairError> {
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
 
-      let mut iv = [0u8; 16];
-      OsRng.fill_bytes(&mut iv);
+      let public_key = BASE64.decode(payload.public_key.as_bytes())
+      .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
-      let enc_pk = security::aes256_encrypt(key, iv, payload.public_key.as_bytes());
+      let enc_pk = security::aes256_encrypt(key, &public_key);
 
-      let encoded_pk = BASE64.encode(&enc_pk.clone());
-      let encoded_iv = BASE64.encode(&iv);
-
-      let mut msg = enc_pk.clone();
-      msg.extend_from_slice(&iv);
-      let hashed = security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      let hashed = security::hmac256_hash(get("HASH_KEY").as_bytes(), &enc_pk)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = PartnerKeyPair {
          id: Uuid::parse_str(&payload.id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")),
          partner_id: Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")),
-         public_key: format!("{}.{}", encoded_pk, encoded_iv),
-         keypair_hash: BASE64.encode(&hashed),
+         public_key: enc_pk,
+         keypair_hash: hashed,
       };
 
-      match self
-         .repository
-         .update_partner_keypair(payload.clone())
-         .await
-      {
+      match self.repository.update_partner_keypair(payload.clone()).await {
          Some(e) => Err(KeypairError::Yabai(e.to_string())),
          None => Ok(()),
       }
    }
 
    async fn delete_keypair(&self, partner_id: String, hash: String) -> Result<(), KeypairError> {
-      let meta = match self
-         .repository
-         .find_partner_keypair_by_hash(hash.clone())
-         .await
-      {
+      let meta = match self.repository.find_partner_keypair_by_hash(hash.clone()).await {
          Ok(v) => v,
          Err(e) => match e {
             DBError::Yabaii(m) => return Err(KeypairError::Yabai(m)),
@@ -233,7 +189,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
          },
       };
 
-      if meta.partner_id != Uuid::parse_str(&partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}")) {
+      if meta.partner_id.to_string() != partner_id {
          return Err(KeypairError::NoAccess);
       }
 
