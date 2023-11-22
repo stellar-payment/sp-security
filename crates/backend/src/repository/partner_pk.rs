@@ -5,6 +5,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
+use log::info;
 use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -35,6 +36,9 @@ impl PartnerPKRepositoryTrait for PartnerPKRepository {
    }
 
    async fn find_partner_keypairs(&self, partner_id: Uuid) -> Result<PartnerKeyPair, DBError> {
+      info!("{}", partner_id);
+
+
       let res = sqlx::query_as::<_, PartnerKeyPair>(
          r#"
          select id, partner_id, public_key, keypair_hash from partner_keypairs

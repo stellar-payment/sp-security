@@ -8,6 +8,7 @@ use corelib::security::aes256_decrypt;
 use corelib::security;
 use p256::{PublicKey, SecretKey};
 use rand_core::{OsRng, RngCore};
+use rand::seq::SliceRandom;
 use uuid::Uuid;
 
 use crate::config::database::Database;
@@ -59,9 +60,10 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
          .find_partner_keypairs(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}"))).await
          .map_err(|e| SecurityError::GenericError(e.to_string()))?;
       
-      let master_data = self.master_repository
-         .find_keypair_by_id(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}"))).await
-         .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+      let master_keypair_list = self.master_repository.find_keypairs().await
+      .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+
+      let master_data = master_keypair_list.choose(&mut OsRng).unwrap();
 
       let dec_secret_key = aes256_decrypt(key, &master_data.private_key).unwrap_or_else(|e| panic!("{e}"));
       let secret_key = SecretKey::from_slice(&dec_secret_key)
@@ -71,22 +73,12 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       let public_key = PublicKey::from_sec1_bytes(&dec_public_key)
       .map_err(|e| SecurityError::GenericError(e.to_string()))?;
 
-      let dec_mpk = aes256_decrypt(key, &master_data.public_key).unwrap_or_else(|e| panic!("{e}"));
-
       let shared_secret = security::ecdh_generate_secret(secret_key, public_key);
       let secret_key = security::generate_shared_key(&shared_secret).map_err(SecurityError::from)?;
 
       let enc_key = &secret_key[0..32];
       let mac_key = &secret_key[32..64];
             
-            
-      let mut iv = [0u8; 16];
-      OsRng.fill_bytes(&mut iv);
-
-
-      let mut iv = [0u8; 16];
-      OsRng.fill_bytes(&mut iv);
-
       let data = BASE64.decode(payload.data.as_bytes())
          .unwrap_or_else(|e| panic!("{e}"));
       let enc_key: GenericArray<u8, U32> = GenericArray::clone_from_slice(enc_key);
@@ -96,7 +88,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       Ok(EncryptDataResponse {
          data: format!("{}.{}", BASE64.encode(&ct) ,BASE64.encode(&iv)),
          tag: BASE64.encode(&mac),
-         secret_key: BASE64.encode(&dec_mpk),
+         secret_key: BASE64.encode(&master_data.keypair_hash),
       })
    }
 
@@ -152,9 +144,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
          .map_err(|e| SecurityError::GenericError(e.to_string()))?;
       let tag = BASE64.decode(payload.tag.as_bytes())
          .map_err(|e| SecurityError::GenericError(e.to_string()))?;
-      let mtag = security::hmac512_hash(mac_key, &ct).map_err(SecurityError::from)?;
 
-      security::hmac512_verify(mac_key, &ct, &mtag).map_err(SecurityError::from)?;
       security::hmac512_verify(mac_key, &ct, &tag).map_err(SecurityError::from)?;
 
       let enc_key: GenericArray<u8, U32> = GenericArray::clone_from_slice(enc_key);

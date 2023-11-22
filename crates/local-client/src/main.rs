@@ -115,8 +115,8 @@ async fn main() {
    let partner_pk = BASE64.decode("2K/vz6mPlr3rlyDtu76LxJG5jMeDL7TsgzeTeoC5Ifo=".as_bytes())
     .unwrap_or_else(|e| panic!("{e}"));
 
-   let secret_key = SecretKey::from_slice(&partner_pk).unwrap_or_else(|e| panic!("{e}"));
-   let public_key = PublicKey::from_sec1_bytes(&master_pk).unwrap_or_else(|e| panic!("{e}"));
+   let secret_key: p256::elliptic_curve::SecretKey<p256::NistP256> = SecretKey::from_slice(&partner_pk).unwrap_or_else(|e| panic!("{e}"));
+   let public_key: p256::elliptic_curve::PublicKey<p256::NistP256> = PublicKey::from_sec1_bytes(&master_pk).unwrap_or_else(|e| panic!("{e}"));
 
    let shared_secret = ecdh_generate_secret(secret_key, public_key);
    
