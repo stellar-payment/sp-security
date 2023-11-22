@@ -2171,6 +2171,7 @@ dependencies = [
  "jsonwebtoken",
  "log",
  "p256",
+ "rand",
  "rand_core",
  "serde",
  "serde_json",
