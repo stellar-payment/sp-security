@@ -18,9 +18,8 @@ pub fn aes256_iv_encrypt(key: GenericArray<u8, U32>, msg: &[u8]) -> (Vec<u8>, Ve
    let mut iv = [0u8; 16];
    OsRng.fill_bytes(&mut iv);
 
-   let mut ct = Aes256CbcEnc::new(&key, &iv.into()).encrypt_padded_vec_mut::<Pkcs7>(msg);
+   let ct = Aes256CbcEnc::new(&key, &iv.into()).encrypt_padded_vec_mut::<Pkcs7>(msg);
 
-   ct.extend_from_slice(&iv);
    (ct, iv.into())
 }
 

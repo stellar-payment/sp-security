@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use data_encoding::BASE64;
 use corelib::security::aes256_decrypt;
 use corelib::security;
+use log::info;
 use p256::{PublicKey, SecretKey};
 use rand_core::{OsRng, RngCore};
 use rand::seq::SliceRandom;
@@ -78,12 +79,36 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
 
       let enc_key = &secret_key[0..32];
       let mac_key = &secret_key[32..64];
-            
+      
+      println!("enc key: {} len: {}", BASE64.encode(enc_key), enc_key.len());
+      println!("mac key: {} len: {}", BASE64.encode(mac_key), mac_key.len());
+      println!(
+         "pk key: {} len: {}",
+         BASE64.encode(&dec_public_key),
+         mac_key.len()
+      );
+      println!(
+         "sk key: {} len: {}",
+         BASE64.encode(&dec_secret_key),
+         mac_key.len()
+      );
+
       let data = BASE64.decode(payload.data.as_bytes())
-         .unwrap_or_else(|e| panic!("{e}"));
+      .unwrap_or_else(|e| panic!("{e}"));
       let enc_key: GenericArray<u8, U32> = GenericArray::clone_from_slice(enc_key);
       let (ct, iv) = security::aes256_iv_encrypt(enc_key, &data);
       let mac = security::hmac512_hash(mac_key, &ct).map_err(SecurityError::from)?;
+      
+      info!("{}", BASE64.encode(&ct));
+      info!("{}", BASE64.encode(&iv));
+
+      println!(
+         "ct: {} len: {}",
+         BASE64.encode(&ct),
+         ct.len()
+      );
+
+      security::aes256_iv_decrypt(enc_key, &iv, &ct).unwrap();
 
       Ok(EncryptDataResponse {
          data: format!("{}.{}", BASE64.encode(&ct) ,BASE64.encode(&iv)),
