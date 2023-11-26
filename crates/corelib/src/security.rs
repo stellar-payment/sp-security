@@ -51,14 +51,23 @@ pub fn ecdh_generate_secret(sk: SecretKey, pk: PublicKey) -> ecdh::SharedSecret 
 
 
 // HKDF-SHA-256
-pub fn generate_shared_key(secret: &ecdh::SharedSecret) -> Result<Vec<u8>, SecurityError>{
+// this function accept shared secret from ECDH, and returns tuples containing Derrived Encryption Key and MAC key
+pub fn generate_shared_key(secret: &ecdh::SharedSecret) -> Result<(Vec<u8>, Vec<u8>), SecurityError>{
    let key = secret.extract::<Sha256>(Some(b""));
 
-   let mut shared_key = [0u8; 64]; 
-   match Hkdf::expand(&key, &[], &mut shared_key) {
-      Ok(_) => Ok(shared_key.to_vec()),
-      Err(e) => Err(SecurityError::GenericError(e.to_string()))
-   }
+   let mut enc_key = [0u8; 32]; 
+   let mut mac_key = [0u8; 32]; 
+   
+   Ok((
+      match Hkdf::expand(&key, b"enc", &mut enc_key) {
+         Ok(_) => enc_key.to_vec(),
+         Err(e) => return Err(SecurityError::GenericError(e.to_string()))
+      }, 
+      match Hkdf::expand(&key, b"mac", &mut mac_key) {
+         Ok(_) => mac_key.to_vec(),
+         Err(e) => return Err(SecurityError::GenericError(e.to_string()))
+      }
+   ))
 }
 
 
