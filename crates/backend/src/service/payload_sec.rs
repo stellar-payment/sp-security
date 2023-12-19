@@ -63,28 +63,28 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
          .map_err(|e| SecurityError::GenericError(e.to_string()))?;
       
       let master_keypair_list = self.master_repository.find_keypairs().await
-      .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+         .map_err(|e| SecurityError::GenericError(e.to_string()))?;
 
-      let master_data = master_keypair_list.choose(&mut OsRng).unwrap();
+      let master_data = master_keypair_list.choose(&mut OsRng)
+         .ok_or(SecurityError::GenericError("no master key found".to_string()))?;
 
       let dec_secret_key = aes256_decrypt(key, &master_data.private_key).unwrap_or_else(|e| panic!("{e}"));
       let secret_key = SecretKey::from_slice(&dec_secret_key)
-      .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+         .map_err(|e| SecurityError::GenericError(e.to_string()))?;
       
       let dec_public_key = aes256_decrypt(key, &partner_data.public_key).unwrap_or_else(|e| panic!("{e}"));
       let public_key = PublicKey::from_sec1_bytes(&dec_public_key)
-      .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+         .map_err(|e| SecurityError::GenericError(e.to_string()))?;
 
       let shared_secret = security::ecdh_generate_secret(secret_key, public_key);
       let (enc_key, mac_key) = security::generate_shared_key(&shared_secret).map_err(SecurityError::from)?;
 
       let data = BASE64.decode(payload.data.as_bytes())
-      .unwrap_or_else(|e| panic!("{e}"));
+         .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+
       let enc_key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&enc_key);
       let (ct, iv) = security::aes256_iv_encrypt(enc_key, &data);
       let mac = security::hmac512_hash(&mac_key, &ct).map_err(SecurityError::from)?;
-
-      security::aes256_iv_decrypt(enc_key, &iv, &ct).unwrap();
 
       Ok(EncryptDataResponse {
          data: format!("{}.{}", BASE64.encode(&ct) ,BASE64.encode(&iv)),
@@ -97,7 +97,10 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       &self,
       payload: DecryptDataPayload,
    ) -> Result<DecryptDataResponse, SecurityError> {
-      let master_data = match self.master_repository.find_keypair_by_hash(BASE64.decode(payload.keypair_hash.as_bytes()).unwrap()).await {
+      let master_data = match self.master_repository.find_keypair_by_hash(
+         BASE64.decode(payload.keypair_hash.as_bytes()).
+         map_err(|e| SecurityError::GenericError(e.to_string()))?
+      ).await {
          Ok(v) => v,
          Err(e) => {
             log::error!("{e}");

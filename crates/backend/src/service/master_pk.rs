@@ -79,7 +79,7 @@ impl MasterPKServiceTrait for MasterPKService {
          return Err(KeypairError::Invalid);
       };
 
-      let meta = match self.repository.find_keypair_by_hash(BASE64.decode(hash.as_bytes()).unwrap()).await {
+      let meta = match self.repository.find_keypair_by_hash(BASE64.decode(hash.as_bytes()).map_err(|_e| KeypairError::Invalid)?).await {
          Ok(v) => v,
          Err(e) => match e {
             DBError::Yabaii(err) => return Err(KeypairError::Yabai(err)),
