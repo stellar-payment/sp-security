@@ -20,13 +20,13 @@ ARG BUILD_TIMESTAMP
 
 ENV BUILD_TAG ${BUILD_TAG}
 ENV BUILD_TIMESTAMP ${BUILD_TIMESTAMP}
-RUN cargo build --release
+RUN cargo build --profile final
 
 # Distribute the binary
 FROM gcr.io/distroless/cc-debian11 AS release
 
 WORKDIR /dist
 
-COPY --from=builder /app/target/release/sp-security ./sp-security
+COPY --from=builder /app/target/final/sp-security ./sp-security
 COPY .env /dist/
 CMD ["/dist/sp-security"]

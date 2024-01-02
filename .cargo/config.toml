@@ -93,7 +93,7 @@ incremental = false
 inherits="release"
 panic = "abort"
 opt-level=3
-lto=true
+lto="fat"
 incremental = false
 
 [target.x86_64-pc-windows-gnu]
