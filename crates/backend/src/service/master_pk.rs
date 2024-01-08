@@ -15,7 +15,7 @@ use crate::error::keypair_error::KeypairError;
 use corelib;
 use crate::repository::master_pk::{MasterPKRepository, MasterPKRepositoryTrait};
 use rand_core::{OsRng, RngCore};
-use data_encoding::BASE64;
+use data_encoding::{BASE64, BASE64URL};
 
 #[derive(Clone)]
 pub struct MasterPKService {
@@ -67,7 +67,7 @@ impl MasterPKServiceTrait for MasterPKService {
          res.keys.push(MasterPKResponse{
             id: meta.id.into(),
             public_key: BASE64.encode(&pk),
-            keypair_hash: BASE64.encode(&meta.keypair_hash)
+            keypair_hash: BASE64URL.encode(&meta.keypair_hash)
          });
       }
       
@@ -79,7 +79,7 @@ impl MasterPKServiceTrait for MasterPKService {
          return Err(KeypairError::Invalid);
       };
 
-      let meta = match self.repository.find_keypair_by_hash(BASE64.decode(hash.as_bytes()).map_err(|_e| KeypairError::Invalid)?).await {
+      let meta = match self.repository.find_keypair_by_hash(BASE64URL.decode(hash.as_bytes()).map_err(|_e| KeypairError::Invalid)?).await {
          Ok(v) => v,
          Err(e) => match e {
             DBError::Yabaii(err) => return Err(KeypairError::Yabai(err)),

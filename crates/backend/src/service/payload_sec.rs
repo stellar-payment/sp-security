@@ -3,7 +3,7 @@ use std::sync::Arc;
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use async_trait::async_trait;
-use data_encoding::BASE64;
+use data_encoding::{BASE64, BASE64URL};
 use corelib::security::aes256_decrypt;
 use corelib::security;
 use hkdf::Hkdf;
@@ -98,7 +98,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       payload: DecryptDataPayload,
    ) -> Result<DecryptDataResponse, SecurityError> {
       let master_data = match self.master_repository.find_keypair_by_hash(
-         BASE64.decode(payload.keypair_hash.as_bytes()).
+         BASE64URL.decode(payload.keypair_hash.as_bytes()).
          map_err(|e| SecurityError::GenericError(e.to_string()))?
       ).await {
          Ok(v) => v,

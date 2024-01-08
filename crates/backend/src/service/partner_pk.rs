@@ -12,7 +12,7 @@ use crate::error::{db_error::DBError, keypair_error::KeypairError};
 use crate::repository::partner_pk::{PartnerPKRepository, PartnerPKRepositoryTrait};
 use async_trait::async_trait;
 use corelib::security;
-use data_encoding::BASE64;
+use data_encoding::{BASE64, BASE64URL};
 
 #[derive(Clone)]
 pub struct PartnerPKService {
@@ -64,7 +64,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
          id: meta.id.into(),
          partner_id: meta.partner_id.into(),
          public_key: BASE64.encode(&pk),
-         keypair_hash: BASE64.encode(&meta.keypair_hash),
+         keypair_hash: BASE64URL.encode(&meta.keypair_hash),
       })
 
    }
@@ -102,7 +102,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
          id: meta.id.into(),
          partner_id: meta.partner_id.into(),
          public_key: BASE64.encode(&pk),
-         keypair_hash: BASE64.encode(&meta.keypair_hash),
+         keypair_hash: BASE64URL.encode(&meta.keypair_hash),
       })
    }
 
@@ -150,7 +150,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
             id: v.to_string(),
             partner_id: payload.partner_id.to_string(),
             public_key: BASE64.encode(&payload.public_key),
-            keypair_hash: BASE64.encode(&payload.keypair_hash),
+            keypair_hash: BASE64URL.encode(&payload.keypair_hash),
          }),
          Err(e) => Err(KeypairError::CreationError(e.to_string())),
       };
