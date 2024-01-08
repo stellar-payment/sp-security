@@ -110,7 +110,7 @@ impl MasterPKServiceTrait for MasterPKService {
       Ok(MasterPKResponse {
          id: meta.id.to_string(),
          public_key: BASE64.encode(&pk),
-         keypair_hash: BASE64.encode(&meta.keypair_hash),
+         keypair_hash: BASE64URL.encode(&meta.keypair_hash),
       })
    }
 
@@ -143,14 +143,14 @@ impl MasterPKServiceTrait for MasterPKService {
          Ok(v) => Ok(MasterPKResponse {
             id: v.to_string(),
             public_key: BASE64.encode(&payload.public_key),
-            keypair_hash: BASE64.encode(&payload.keypair_hash)
+            keypair_hash: BASE64URL.encode(&payload.keypair_hash)
          }),
          Err(e) => Err(KeypairError::CreationError(e.to_string())),
       };
    }
 
    async fn delete_keypair(&self, hash: String) -> Option<KeypairError> {
-      let keypair = match self.repository.find_keypair_by_hash(BASE64.decode(hash.as_bytes()).unwrap()).await {
+      let keypair = match self.repository.find_keypair_by_hash(BASE64URL.decode(hash.as_bytes()).unwrap()).await {
          Ok(v) => v,
          Err(e) => return Some(KeypairError::Yabai(e.to_string())),
       };

@@ -126,7 +126,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
       let mut iv = [0u8; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let public_key = BASE64.decode(payload.public_key.as_bytes())
+      let public_key = BASE64URL.decode(payload.public_key.as_bytes())
          .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let enc_pk = security::aes256_encrypt(key, &public_key);
@@ -159,7 +159,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
    async fn update_keypair(&self, payload: PartnerPKPayload) -> Result<(), KeypairError> {
       let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(get("DB_KEY").as_bytes());
 
-      let public_key = BASE64.decode(payload.public_key.as_bytes())
+      let public_key = BASE64URL.decode(payload.public_key.as_bytes())
       .map_err(|e| KeypairError::CreationError(e.to_string()))?;
 
       let enc_pk = security::aes256_encrypt(key, &public_key);

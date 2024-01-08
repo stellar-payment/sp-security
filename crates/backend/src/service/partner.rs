@@ -5,7 +5,7 @@ use aes::cipher::generic_array::GenericArray;
 use aes::cipher::typenum::U32;
 use async_trait::async_trait;
 use corelib::security;
-use data_encoding::BASE64;
+use data_encoding::{BASE64, BASE64URL};
 use uuid::Uuid;
 
 use crate::config::database::Database;

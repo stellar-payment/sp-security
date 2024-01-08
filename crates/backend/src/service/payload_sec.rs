@@ -89,7 +89,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       Ok(EncryptDataResponse {
          data: format!("{}.{}", BASE64.encode(&ct) ,BASE64.encode(&iv)),
          tag: BASE64.encode(&mac),
-         secret_key: BASE64.encode(&master_data.keypair_hash),
+         secret_key: BASE64URL.encode(&master_data.keypair_hash),
       })
    }
 
