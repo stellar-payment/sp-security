@@ -270,7 +270,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = EphemeralMasterKeyPair {
-         public_key: enc_pk,
+         public_key: enc_pk.clone(),
          private_key: enc_secret,
          keypair_hash: BASE64URL.encode(&hashed),
       };
@@ -278,7 +278,7 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       return match self.master_repository.insert_keypair(payload.clone()).await {
          Ok(()) => Ok(MasterPKResponse {
             id: String::default(),
-            public_key: BASE64.encode(&payload.public_key),
+            public_key: BASE64.encode(&pk),
             keypair_hash: BASE64URL.encode(&hashed)
          }),
          Err(e) => Err(KeypairError::CreationError(e.to_string())),
