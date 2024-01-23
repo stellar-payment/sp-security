@@ -1,5 +1,6 @@
 use crate::config::database::DatabaseTrait;
-use crate::config::{database, parameter};
+use crate::config::cache::CacheTrait;
+use crate::config::{database, parameter, cache};
 use std::panic;
 use std::sync::Arc;
 use log::{info, error};
@@ -51,14 +52,22 @@ async fn main() {
    }));
 
    parameter::init();
-   let conn = database::Database::init()
+   let db = database::Database::init()
       .await
       .unwrap_or_else(|e| panic!("database error: {}", e));
-
+   
+   let cache = cache::Cache::init()
+      .await
+      .unwrap_or_else(|e| panic!("cache error: {}", e));
+   
    let host = format!("0.0.0.0:{}", parameter::get("PORT"));
    info!("listening on {}", host);
-   match axum::Server::bind(&host.parse().unwrap())
-      .serve(routes::root::routes(Arc::new(conn)))
+
+   let listener = tokio::net::TcpListener::bind(host)
+      .await
+      .unwrap_or_else(|e| panic!("failed to initialize listener error: {}", e));
+
+   match axum::serve(listener, routes::root::routes(Arc::new(db), cache))
       .await {
          Ok(_) => (),
          Err(e) =>  error!("failed to connect error: {}", e)

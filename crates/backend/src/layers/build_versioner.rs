@@ -3,7 +3,7 @@ use hyper::http::HeaderValue;
 
 use crate::{BUILD_TIME, BUILD_VER};
 
-pub async fn build_version_header<T>(req: Request<T>, next: Next<T>) -> Response {
+pub async fn build_version_header(req: Request<axum::body::Body>, next: Next) -> Response {
    let mut res = next.run(req).await;
    res.headers_mut()
       .insert("x-build-time", HeaderValue::from_static(BUILD_TIME));

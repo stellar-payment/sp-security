@@ -21,3 +21,10 @@ pub struct MasterKeyPair {
    // pub updated_at: DateTime<Utc>,
 }
 
+
+#[derive(Clone, Deserialize, Serialize, sqlx::FromRow)]
+pub struct EphemeralMasterKeyPair {
+   pub public_key: Vec<u8>,
+   pub private_key: Vec<u8>,
+   pub keypair_hash: String,
+}

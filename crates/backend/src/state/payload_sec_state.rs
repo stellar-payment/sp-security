@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::config::cache::Cache;
 use crate::service::payload_sec::{PayloadSecurityService, PayloadSecurityServiceTrait};
 use crate::config::database::Database;
 
@@ -9,9 +10,9 @@ pub struct PayloadSecurityState {
 }
 
 impl PayloadSecurityState {
-    pub fn new(conn: &Arc<Database>) -> PayloadSecurityState {
+    pub fn new(db: &Arc<Database>, cache: Cache) -> PayloadSecurityState {
         Self { 
-            service: PayloadSecurityService::new(conn), 
+            service: PayloadSecurityService::new(db, cache), 
         }
     }
 }

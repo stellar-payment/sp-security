@@ -1,13 +1,12 @@
-use axum::body::Bytes;
+use axum::body::Body;
 use axum::http::{Request, Response, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
-use hyper::Body;
 use log::info;
 
 pub async fn api_logger(
    req: Request<axum::body::Body>,
-   next: Next<axum::body::Body>,
+   next: Next,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
    let path = &req.uri().path().to_string();
 
@@ -15,23 +14,19 @@ pub async fn api_logger(
    let bytes = log_payload("request", path, req_body).await?;
 
    let res = next
-      .run(Request::from_parts(req_parts, Body::from(bytes)))
+      .run(Request::from_parts(req_parts, bytes))
       .await;
 
    let (res_parts, res_body) = res.into_parts();
    let bytes = log_payload("response", path, res_body).await?;
 
-   let res = Response::from_parts(res_parts, Body::from(bytes));
+   let res = Response::from_parts(res_parts, Body::new(bytes));
 
    Ok(res)
 }
 
-async fn log_payload<B>(direction: &str, path: &str, body: B) -> Result<Bytes, (StatusCode, String)>
-where
-   B: axum::body::HttpBody<Data = Bytes>,
-   B::Error: std::fmt::Display,
-{
-   let bytes = match hyper::body::to_bytes(body).await {
+async fn log_payload(direction: &str, path: &str, body: axum::body::Body) -> Result<axum::body::Body, (StatusCode, String)> {
+   let bytes = match axum::body::to_bytes(body, usize::MAX).await {
       Ok(b) => b,
       Err(e) => {
          return Err((
@@ -51,5 +46,5 @@ where
       }
    }
 
-   Ok(bytes)
+   Ok(Body::from(bytes))
 }
