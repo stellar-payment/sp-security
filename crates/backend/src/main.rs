@@ -63,13 +63,20 @@ async fn main() {
    let host = format!("0.0.0.0:{}", parameter::get("PORT"));
    info!("listening on {}", host);
 
-   let listener = tokio::net::TcpListener::bind(host)
-      .await
-      .unwrap_or_else(|e| panic!("failed to initialize listener error: {}", e));
+   // let listener = tokio::net::TcpListener::bind(host)
+   //    .await
+   //    .unwrap_or_else(|e| panic!("failed to initialize listener error: {}", e));
 
-   match axum::serve(listener, routes::root::routes(Arc::new(db), cache))
-      .await {
-         Ok(_) => (),
-         Err(e) =>  error!("failed to connect error: {}", e)
-      }
+   // match axum::serve(listener, routes::root::routes(Arc::new(db), cache))
+   //    .await {
+   //       Ok(_) => (),
+   //       Err(e) =>  error!("failed to connect error: {}", e)
+   //    }
+
+   match axum::Server::bind(&host.parse().unwrap())
+   .serve(routes::root::routes(Arc::new(db), cache)).await {
+      Ok(_) => (), 
+      Err(e) => error!("failed to connect error: {}", e)
+   }
+
 }

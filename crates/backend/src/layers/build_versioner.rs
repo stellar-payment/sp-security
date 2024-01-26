@@ -1,9 +1,10 @@
 use axum::{http::Request, middleware::Next, response::Response};
-use hyper::http::HeaderValue;
+use hyper::{http::HeaderValue, Body};
 
 use crate::{BUILD_TIME, BUILD_VER};
 
-pub async fn build_version_header(req: Request<axum::body::Body>, next: Next) -> Response {
+// pub async fn build_version_header(req: Request<axum::body::Body>, next: Next) -> Response {
+pub async fn build_version_header(req: Request<axum::body::Body>, next: Next<Body>) -> Response {
    let mut res = next.run(req).await;
    res.headers_mut()
       .insert("x-build-time", HeaderValue::from_static(BUILD_TIME));
