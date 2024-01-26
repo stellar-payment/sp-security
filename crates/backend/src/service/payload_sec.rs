@@ -55,7 +55,7 @@ pub trait PayloadSecurityServiceTrait {
 impl PayloadSecurityServiceTrait for PayloadSecurityService {
    fn new(db: &Arc<Database>, cache: Cache) -> Self {
       Self {
-         partner_repository: PartnerPKRepository::new(db),
+         partner_repository: PartnerPKRepository::new(db, cache.clone()),
          master_repository: MasterEPKRepository::new(cache),
       }
    }
@@ -165,20 +165,32 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
       let mut iv = [0x24; 16];
       OsRng.fill_bytes(&mut iv);
 
-      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
-      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
+      // let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      // let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
-      let enc_secret = corelib::security::aes256_encrypt(key, &ppk.clone());
-      let enc_pk = corelib::security::aes256_encrypt(key, &pk);
+      // let enc_secret = corelib::security::aes256_encrypt(key, &ppk.clone());
+      // let enc_pk = corelib::security::aes256_encrypt(key, &pk);
 
-      let mut msg = enc_pk.clone();
-      msg.extend(enc_secret.clone());
+      // let mut msg = enc_pk.clone();
+      // msg.extend(enc_secret.clone());
+      // let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
+      //    .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
+      // let payload = EphemeralMasterKeyPair {
+      //    public_key: enc_pk,
+      //    private_key: enc_secret,
+      //    keypair_hash: BASE64URL.encode(&hashed),
+      // };
+
+      let mut msg = pk.clone().to_vec();
+      msg.extend(ppk);
+
       let hashed = corelib::security::hmac256_hash(get("HASH_KEY").as_bytes(), &msg)
          .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
       let payload = EphemeralMasterKeyPair {
-         public_key: enc_pk,
-         private_key: enc_secret,
+         public_key: pk.to_vec(),
+         private_key: ppk.to_vec(),
          keypair_hash: BASE64URL.encode(&hashed),
       };
 
@@ -201,14 +213,16 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
          },
       };
 
-      let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(format!("failed to decode key: {e}")))?;
-      let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
+      // let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(format!("failed to decode key: {e}")))?;
+      // let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key); 
 
-      let mut hashmsg = meta.public_key.clone();
-      hashmsg.extend(meta.private_key.clone());
+      // let mut hashmsg = meta.public_key.clone();
+      // hashmsg.extend(meta.private_key.clone());
       
-      let sk = corelib::security::aes256_decrypt(key, &meta.private_key)
-      .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+      // let sk = corelib::security::aes256_decrypt(key, &meta.private_key)
+      // .map_err(|e| KeypairError::Yabai(e.to_string()))?;
+
+      let sk = meta.private_key;
 
       // validate key
       let key = SecretKey::from_slice(&sk).map_err(|e| KeypairError::IntegrityCheckFailed(e.to_string()))?;

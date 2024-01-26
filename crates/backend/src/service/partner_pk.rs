@@ -4,6 +4,7 @@ use rand_core::{OsRng, RngCore};
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::config::cache::Cache;
 use crate::config::database::Database;
 use crate::config::parameter::get;
 use crate::dto::partner_keypair::{PartnerPKPayload, PartnerPKResponse};
@@ -21,31 +22,31 @@ pub struct PartnerPKService {
 
 #[async_trait]
 pub trait PartnerPKServiceTrait {
-   fn new(db: &Arc<Database>) -> Self;
+   fn new(db: &Arc<Database>, cache: Cache) -> Self;
 
-   async fn get_keypairs(&self, partner_id: String) -> Result<PartnerPKResponse, KeypairError>;
+   async fn get_keypairs(&mut self, partner_id: String) -> Result<PartnerPKResponse, KeypairError>;
    async fn get_keypair_by_hash(
-      &self,
+      &mut self,
       partner_id: String,
       hash: String,
    ) -> Result<PartnerPKResponse, KeypairError>;
    async fn create_keypair(
-      &self,
+      &mut self,
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError>;
    async fn update_keypair(&self, payload: PartnerPKPayload) -> Result<(), KeypairError>;
-   async fn delete_keypair(&self, partner_id: String, hash: String) -> Result<(), KeypairError>;
+   async fn delete_keypair(&mut self, partner_id: String, hash: String) -> Result<(), KeypairError>;
 }
 
 #[async_trait]
 impl PartnerPKServiceTrait for PartnerPKService {
-   fn new(db: &Arc<Database>) -> Self {
+   fn new(db: &Arc<Database>, cache: Cache) -> Self {
       Self {
-         repository: PartnerPKRepository::new(db),
+         repository: PartnerPKRepository::new(db, cache),
       }
    }
 
-   async fn get_keypairs(&self, partner_id: String) -> Result<PartnerPKResponse, KeypairError> {
+   async fn get_keypairs(&mut self, partner_id: String) -> Result<PartnerPKResponse, KeypairError> {
       let meta = match self.repository.find_partner_keypairs(Uuid::parse_str(&partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}"))).await {
          Ok(v) => v,
          Err(e) => return Err(KeypairError::Yabai(e.to_string())),
@@ -70,7 +71,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
    }
 
    async fn get_keypair_by_hash(
-      &self,
+      &mut self,
       partner_id: String,
       hash: String,
    ) -> Result<PartnerPKResponse, KeypairError> {
@@ -107,7 +108,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
    }
 
    async fn create_keypair(
-      &self,
+      &mut self,
       payload: PartnerPKPayload,
    ) -> Result<PartnerPKResponse, KeypairError> {
       match self.repository.find_partner_keypairs(Uuid::parse_str(&payload.partner_id).unwrap_or_else(|e|  panic!("invalid uuidv7: {e}"))).await {
@@ -180,7 +181,7 @@ impl PartnerPKServiceTrait for PartnerPKService {
       }
    }
 
-   async fn delete_keypair(&self, partner_id: String, hash: String) -> Result<(), KeypairError> {
+   async fn delete_keypair(&mut self, partner_id: String, hash: String) -> Result<(), KeypairError> {
       let meta = match self.repository.find_partner_keypair_by_hash(hash.clone()).await {
          Ok(v) => v,
          Err(e) => match e {

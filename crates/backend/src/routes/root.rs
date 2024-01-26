@@ -15,7 +15,7 @@ use super::{partner_pk, security, partner};
 
 pub fn routes(db: Arc<Database>, cache: Cache) -> IntoMakeService<Router> {
    let merged_router: Router = {
-      let partner_pk_state = PartnerPKState::new(&db);
+      let partner_pk_state = PartnerPKState::new(&db, cache.clone());
       let payload_enc_state = PayloadSecurityState::new(&db, cache);
       let partner_state = PartnerState::new(&db);
 
