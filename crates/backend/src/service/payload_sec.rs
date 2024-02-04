@@ -300,16 +300,14 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
             },
         };
 
-        // let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(format!("failed to decode key: {e}")))?;
-        // let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
+        let decoded_key = BASE64.decode(get("DB_KEY").as_bytes()).map_err(|e| KeypairError::Yabai(format!("failed to decode key: {e}")))?;
+        let key: GenericArray<u8, U32> = GenericArray::clone_from_slice(&decoded_key);
 
-        // let mut hashmsg = meta.public_key.clone();
-        // hashmsg.extend(meta.private_key.clone());
+        let mut hashmsg = meta.public_key.clone();
+        hashmsg.extend(meta.private_key.clone());
 
-        // let sk = corelib::security::aes256_decrypt(key, &meta.private_key)
-        // .map_err(|e| KeypairError::Yabai(e.to_string()))?;
-
-        let sk = meta.private_key;
+        let sk = corelib::security::aes256_decrypt(key, &meta.private_key)
+        .map_err(|e| KeypairError::Yabai(e.to_string()))?;
 
         // validate key
         let key = SecretKey::from_slice(&sk)
