@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use corelib::security;
 use corelib::security::aes256_decrypt;
 use data_encoding::{BASE64, BASE64URL};
+use log::info;
 use p256::{PublicKey, SecretKey};
 use rand::seq::SliceRandom;
 use rand_core::{OsRng, RngCore};
@@ -174,6 +175,10 @@ impl PayloadSecurityServiceTrait for PayloadSecurityService {
         let ct = BASE64
             .decode(encoded_data.as_bytes())
             .map_err(|e| SecurityError::GenericError(e.to_string()))?;
+
+        info!("enc: {}", BASE64.encode(&enc_key));
+        info!("iv: {}", BASE64.encode(&iv));
+        info!("tag: {}", BASE64.encode(&tag));
 
         let pt = security::aes256_iv_decrypt(enc_key, &iv, &ct)
             .map_err(|e| SecurityError::GenericError(e.to_string()))?;
